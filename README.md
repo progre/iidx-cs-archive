@@ -18,6 +18,14 @@ Makes one PS2 disc image with the songs of the PS2 IIDX series.
 
 You get `build/iidx-cs-archive.iso`.
 
+> [!IMPORTANT]
+> The image needs the extended RAM of [PCSX2](https://pcsx2.net/).
+> Turn it on before you play:
+>
+> 1. In PCSX2, check **Tools > Show Advanced Settings**.
+> 2. Open the settings, and go to the **Advanced** page.
+> 3. Check **Enable Extended RAM (Dev Console)**.
+
 ## Building from source
 
 Requires [Deno](https://deno.com/) 2.
