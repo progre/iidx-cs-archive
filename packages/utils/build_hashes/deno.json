@@ -1,0 +1,4 @@
+{
+  "name": "@csa/utils-build-hashes",
+  "exports": "./main.ts"
+}

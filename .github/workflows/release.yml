@@ -1,0 +1,37 @@
+# Windows 用の exe と data/ を zip にまとめ、artifact に載せる。タグの push のときは GitHub Release にも載せる。
+# exe は data/ を作業フォルダーからの相対パスで読むため、zip に同じ階層で入れる
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno fmt --check
+      - run: deno lint
+      - run: deno check packages
+      - run: deno task test
+      - run: deno task compile
+      - run: cp -r data build/compile/
+      - working-directory: build/compile
+        run: zip -r ../iidx-cs-archive.zip iidx-cs-archive.exe data
+      - uses: actions/upload-artifact@v7
+        with:
+          name: iidx-cs-archive
+          path: build/iidx-cs-archive.zip
+      - if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" build/iidx-cs-archive.zip --generate-notes

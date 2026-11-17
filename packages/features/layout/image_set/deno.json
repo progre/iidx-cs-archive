@@ -1,0 +1,4 @@
+{
+  "name": "@csa/layout-image-set",
+  "exports": "./lib.ts"
+}

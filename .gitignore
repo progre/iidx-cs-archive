@@ -1,0 +1,9 @@
+/build/
+/CLAUDE.local.md
+/config/discs.json
+/external/
+/node_modules/
+/.pub.git/
+/resources/
+
+__pycache__/

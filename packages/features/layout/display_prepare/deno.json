@@ -1,0 +1,4 @@
+{
+  "name": "@csa/layout-display-prepare",
+  "exports": "./lib.ts"
+}

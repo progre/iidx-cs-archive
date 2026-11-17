@@ -1,0 +1,4 @@
+{
+  "name": "@csa/containers-disc",
+  "exports": "./lib.ts"
+}

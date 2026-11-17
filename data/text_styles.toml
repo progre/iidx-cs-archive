@@ -1,0 +1,70 @@
+# 共有画像セット(DATA1 1312〜1315)の文字を描く設定。長さの単位はpx。
+
+[list_title]
+font = "MPLUS1p-Medium.ttf"
+# 基準線の位置は、原作の曲名に合わせた位置から1px上げた(2026-10-17、ユーザー指示)。
+# yやgの下へ出る部分は、画像の下端で切る(2026-10-17、ユーザー指示)
+cap_height = 14
+baseline = 16
+# 縁をもっと黒く見せるため、0.5から太くした(2026-10-19、ユーザー指示)
+outline = 0.75
+# 縁の外周をくっきりさせて、縁を濃く見せる(2026-10-17、ユーザー指示)
+outline_softness = 0.25
+# 副題は、大文字Hの高さが13pxになる倍率にする(2026-10-17、ユーザー指示)
+subtitle_scale = 0.9286
+width_scale = 1
+# 本題の字の間を1px詰める。本題の1字は約19.2px(2026-10-17、ユーザー指示)
+letter_spacing = -0.052
+offset_y = 0
+gradient = [
+  { at = 0, color = "#ffffff" },
+  { at = 0.4, color = "#ffffff" },
+  { at = 1, color = "#8a8a8a" },
+]
+
+# 下端の手前で明るく戻すのは、原作の金属の照り返しに合わせるため
+[big_title]
+font = "MPLUS1p-Black.ttf"
+# 30から2大きくした(2026-10-16、ユーザー指示)
+cap_height = 32
+outline = 0.75
+outline_softness = 0.5
+subtitle_scale = 0.5
+width_scale = 0.8
+letter_spacing = -0.04
+offset_y = 0
+gradient = [
+  { at = 0, color = "#ffffff" },
+  { at = 0.15, color = "#ffffff" },
+  { at = 0.8, color = "#6a6a6a" },
+  { at = 1, color = "#d0d0d0" },
+]
+
+[genre]
+font = "MPLUS1p-Black.ttf"
+cap_height = 11.5
+outline = 0.5
+outline_softness = 0.5
+subtitle_scale = 1
+width_scale = 1
+letter_spacing = 0
+offset_y = 0
+gradient = [
+  { at = 0, color = "#ffffff" },
+  { at = 0.2, color = "#ffffff" },
+  { at = 1, color = "#bdbdbd" },
+]
+
+[artist]
+font = "MPLUS1p-Black.ttf"
+cap_height = 11
+outline = 0.75
+outline_softness = 0.5
+subtitle_scale = 1
+width_scale = 1
+letter_spacing = 0
+offset_y = 0
+gradient = [
+  { at = 0, color = "#ffffff" },
+  { at = 1, color = "#ffffff" },
+]

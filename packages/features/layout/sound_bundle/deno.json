@@ -1,0 +1,4 @@
+{
+  "name": "@csa/layout-sound-bundle",
+  "exports": "./lib.ts"
+}

@@ -1,0 +1,4 @@
+{
+  "name": "@csa/contents-elf",
+  "exports": "./lib.ts"
+}

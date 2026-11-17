@@ -1,0 +1,43 @@
+{
+  "fmt": {
+    "include": ["packages"],
+    "proseWrap": "preserve"
+  },
+  "imports": {
+    "@cliffy/prompt": "jsr:@cliffy/prompt@1.0.0-rc.8",
+    "@resvg/resvg-wasm": "npm:@resvg/resvg-wasm@^2.6.2",
+    "@std/assert": "jsr:@std/assert@1",
+    "@std/async": "jsr:@std/async@1",
+    "@std/cli": "jsr:@std/cli@^1.0.32",
+    "@std/csv": "jsr:@std/csv@^1.0.6",
+    "@std/encoding": "jsr:@std/encoding@1",
+    "@std/path": "jsr:@std/path@1",
+    "@std/toml": "jsr:@std/toml@^1.0.11",
+    "alpinejs": "npm:alpinejs@^3.14.9",
+    "bootstrap": "npm:bootstrap@^5.3.8",
+    "egoroof-blowfish": "npm:egoroof-blowfish@^4.0.3",
+    "handlebars": "npm:handlebars@^4.7.8",
+    "jimp": "npm:jimp@^1.6.1",
+    "listr2": "npm:listr2@^9",
+    "opentype.js": "npm:opentype.js@^2.0.0"
+  },
+  "lint": {
+    "include": ["packages"],
+    "rules": {
+      "exclude": ["no-slow-types"]
+    }
+  },
+  "nodeModulesDir": "none",
+  "tasks": {
+    "build": "deno run --allow-env --allow-read=. --allow-run=ffmpeg --allow-sys=osRelease --allow-write=build packages/app/main.ts",
+    "compile": "deno compile --target x86_64-pc-windows-msvc --include packages/features/report/song_list/assets --include packages/features/report/song_list/templates --allow-env --allow-read=. --allow-run=ffmpeg --allow-sys=osRelease --allow-write=build --output build/compile/iidx-cs-archive.exe packages/app/main.ts",
+    "test": "deno test --allow-env --allow-read=. packages"
+  },
+  "unstable": ["raw-imports"],
+  "workspace": [
+    "./packages/app",
+    "./packages/core",
+    "./packages/features/*/*",
+    "./packages/utils/*"
+  ]
+}

@@ -1,0 +1,6 @@
+<p class="small text-body-secondary mb-2 stick-left">セーブデータには、曲の記録が index 順に並ぶ。記録の枠を持たない曲も、同じ原作の曲の間に原作 index の順で入れてある。黒い行は外した曲、灰色の行は裏エントリーである。</p>
+<table class="table table-sm table-bordered table-hover small w-auto"><thead><tr><th>index</th><th>原作</th><th>原作index</th><th>原作曲名</th></tr></thead><tbody>
+{{#each saveOrder}}
+<tr{{#if classes}} class="{{classes}}"{{/if}}><td class="text-end">{{indexText}}</td><td>{{generation}}</td><td class="text-end">{{songId}}</td><td>{{title}}</td></tr>
+{{/each}}
+</tbody></table>

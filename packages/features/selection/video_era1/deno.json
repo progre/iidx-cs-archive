@@ -1,0 +1,4 @@
+{
+  "name": "@csa/selection-video-era1",
+  "exports": "./lib.ts"
+}

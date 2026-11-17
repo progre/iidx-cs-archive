@@ -1,0 +1,4 @@
+{
+  "name": "@csa/app",
+  "exports": "./main.ts"
+}

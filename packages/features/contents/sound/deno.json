@@ -1,0 +1,4 @@
+{
+  "name": "@csa/contents-sound",
+  "exports": "./lib.ts"
+}

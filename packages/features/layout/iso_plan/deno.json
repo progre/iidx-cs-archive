@@ -1,0 +1,4 @@
+{
+  "name": "@csa/layout-iso-plan",
+  "exports": "./lib.ts"
+}

@@ -1,0 +1,4 @@
+{
+  "name": "@csa/contents-song-db",
+  "exports": "./lib.ts"
+}

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<title>全曲・譜面一覧 {{label}}</title>
+<script>document.documentElement.dataset.bsTheme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";</script>
+<style>{{{style}}}
+{{#each heads}}body[data-tab="{{folder}}"] #songs tbody tr[data-folder="{{folder}}"] { display: table-row; }
+{{/each}}</style>
+<script>{{{script}}}</script></head>
+<body class="page p-3" x-data="{ hash: decodeURIComponent(location.hash.slice(1)), get view() { return this.hash === 'save-order' ? 'save' : 'songs' }, get tab() { return this.view === 'songs' && this.hash !== '' ? this.hash : 'all' } }" x-init="addEventListener('hashchange', () => { hash = decodeURIComponent(location.hash.slice(1)) })" :data-tab="tab">
+<header class="stick-left mb-3">
+<div class="d-flex flex-wrap align-items-baseline column-gap-3 mb-1">
+<h1 class="h5 mb-0">全曲・譜面一覧</h1>
+<span class="small text-body-secondary">{{label}}</span>
+<span class="small text-body-secondary">曲 {{summary.songs}} (原盤収録 {{summary.original}} + 追加 {{summary.added}}) / 譜面 {{summary.charts}} / 外した曲 {{removedCount}} (黒い行)</span>
+</div>
+<ul class="nav nav-tabs">
+<li class="nav-item"><a class="nav-link py-1" :class="{ active: view === 'songs' }" href="#">曲・譜面</a></li>
+<li class="nav-item"><a class="nav-link py-1" :class="{ active: view === 'save' }" href="#save-order">セーブデータの曲の並び</a></li>
+</ul>
+</header>
+<main>
+<section x-show="view === 'songs'">
+<nav class="nav nav-pills small gap-1 pb-2 stick-left folder-tabs" x-init="new ResizeObserver(() => document.body.style.setProperty('--tabs-height', $el.offsetHeight + 'px')).observe($el)">
+<a class="nav-link py-0 px-2" :class="{ active: tab === 'all' }" href="#">曲名順 ({{selectCount}})</a>
+{{#each heads}}
+<a class="nav-link py-0 px-2" :class="{ active: tab === '{{folder}}' }" href="#{{folder}}">{{folder}} ({{count}})</a>
+{{/each}}
+</nav>
+{{> table}}
+</section>
+<section x-show="view === 'save'" x-cloak>
+{{> save_order}}
+</section>
+</main>
+</body></html>

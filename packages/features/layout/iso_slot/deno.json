@@ -1,0 +1,4 @@
+{
+  "name": "@csa/layout-iso-slot",
+  "exports": "./lib.ts"
+}

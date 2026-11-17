@@ -1,0 +1,4 @@
+{
+  "name": "@csa/selection-song-catalog",
+  "exports": "./lib.ts"
+}

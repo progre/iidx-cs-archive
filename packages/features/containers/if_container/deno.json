@@ -1,0 +1,4 @@
+{
+  "name": "@csa/containers-if-container",
+  "exports": "./lib.ts"
+}

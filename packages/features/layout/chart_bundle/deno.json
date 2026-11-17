@@ -1,0 +1,4 @@
+{
+  "name": "@csa/layout-chart-bundle",
+  "exports": "./lib.ts"
+}

@@ -1,0 +1,4 @@
+{
+  "name": "@csa/contents-display",
+  "exports": "./lib.ts"
+}

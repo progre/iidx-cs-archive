@@ -1,0 +1,60 @@
+/* Bootstrap の後に置く。Bootstrap の class で表せない指定だけを書く */
+
+/* Alpine が読み込まれるまで、隠すタブの中身を出さない */
+[x-cloak] {
+  display: none !important;
+}
+/* 表は画面より広いので、ページを表の幅まで広げ、ページごと縦にも横にもスクロールする */
+.page {
+  width: max-content;
+  min-width: 100%;
+}
+/* タイトルとタブは、横にスクロールしても左端に残す。幅は画面に収める */
+.stick-left {
+  position: sticky;
+  left: 1rem;
+  width: fit-content;
+  max-width: calc(100vw - 2rem);
+}
+th,
+td {
+  white-space: nowrap;
+}
+/* 見出しの行は、縦にスクロールしても画面の上端に残す */
+thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+/* 収録フォルダーのタブは、縦にスクロールしても画面の上端に残す。下を流れる表が透けないよう、画面の幅で塗る */
+.folder-tabs {
+  top: 0;
+  z-index: 3;
+  width: calc(100vw - 2rem);
+  background-color: var(--bs-body-bg);
+}
+/* 曲の表の見出しは、タブの下に残す。タブの高さは折り返しで変わるので、page.hbs が測って渡す */
+#songs thead {
+  top: var(--tabs-height, 0);
+}
+thead th {
+  vertical-align: middle;
+}
+/* 管理名の列は、横にスクロールしても画面の左端に残す */
+#songs .pinned {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  border-right-width: 2px;
+}
+/* 長い値は幅で切り詰め、全文はツールチップに表示する */
+td.clip {
+  max-width: 16ch;
+}
+td.clip-title {
+  max-width: 12rem;
+}
+/* 収録フォルダーのタブを選んだときは、ここで全行を隠す。選んだフォルダーの行を出す指定は page.hbs にある */
+body:not([data-tab="all"]) #songs tbody tr {
+  display: none;
+}

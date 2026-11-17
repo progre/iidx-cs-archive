@@ -1,0 +1,4 @@
+{
+  "name": "@csa/core",
+  "exports": "./lib.ts"
+}
