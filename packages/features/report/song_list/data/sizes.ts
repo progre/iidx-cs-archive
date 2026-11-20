@@ -56,7 +56,11 @@ function withOriginal(
     return videos;
   }
   if (videos.length !== 1) {
-    throw new Error(`原作のムービーを添える先が${videos.length}本ある`);
+    throw new Error(
+      `原作のムービーを添える先が${videos.length}本ある: ${
+        videos.map(({ source }) => source).join(", ")
+      }`,
+    );
   }
   const original = originals
     .map((video) => `${video.sourceGeneration}:${video.sourceFileIndex}`)
@@ -131,7 +135,7 @@ export function sharedSoundsOf(
 /**
  * PB収録曲。PBの資産はそのまま載るので、素材側の識別子はPBのfile indexになる。
  * songmapの`videos`はABC連結空間のfile indexそのもので、曲DB`+0x58`と一致する。
- * `redirect`は、`video_adoptions.csv`でムービーを差し替えた曲だけが持つ、差し替え先のABC indexである
+ * `redirect`は、同じ映像の1本へムービーを差し替えた曲だけが持つ、差し替え先のABC indexである
  */
 export function pbSize(
   song: SongmapSong,

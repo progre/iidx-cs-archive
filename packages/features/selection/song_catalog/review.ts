@@ -15,7 +15,7 @@ import {
 } from "./match.ts";
 import { type CatalogRow, parseSongCatalog } from "./file/mod.ts";
 
-const FILE_NAME = /^\d{2}_(.+)\.tsv$/;
+const FILE_NAME = /^\d{2}_(.+)\.csv$/;
 
 const KIND_LABELS: Record<CatalogReport["kind"], string> = {
   missing: "missing",

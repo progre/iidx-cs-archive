@@ -1,6 +1,7 @@
 /**
- * 全曲リストの`front_charts`列のうち、表の曲が左の難易度を持つ組(`movedCharts`)。
- * 裏の曲の中で、右の難易度の譜面を左の難易度へ移す。表の曲へは写さない。
+ * 曲の中で譜面を移す組(`chartMoves`)のうち、表の曲へ写さない組。
+ * 裏の曲では、表の曲が左の難易度を持つ組である。表の曲では、表の曲の行に書いたすべての組である。
+ * 右の難易度の譜面を左の難易度へ移し、右の難易度を空にする。
  */
 
 import type { MutableElf } from "../../../elf/mod.ts";
@@ -8,19 +9,22 @@ import type { SongContent } from "../../../model/mod.ts";
 import { type CsaSongDb, entryAddressOf } from "../song_db.ts";
 import { fieldBytes, fieldsOf, hasChart } from "./chart_fields.ts";
 
-/** 裏の曲の中で譜面を移す組。`to`は表の曲が持つ難易度である */
+/** 曲の中で譜面を移し、右の難易度を空にする組。裏の曲では、`to`は表の曲が持つ難易度である */
 export function movedChartsOf(content: SongContent) {
   // 表の曲の行に書いた組は、表の曲の中で移す
-  return content.songs.flatMap((song) =>
-    Object.entries({
-      ...song.variantOf?.movedCharts,
-      ...song.movedCharts,
+  return content.songs.flatMap((song) => {
+    const fills = song.variantOf?.frontFills ?? [];
+    const backMoves = Object.entries(song.variantOf?.chartMoves ?? {})
+      .filter(([to]) => !fills.includes(to));
+    return Object.entries({
+      ...Object.fromEntries(backMoves),
+      ...song.chartMoves,
     }).map(([to, from]) => ({
       from,
       index: song.targetSongIndex,
       to,
-    }))
-  );
+    }));
+  });
 }
 
 type Move = ReturnType<typeof movedChartsOf>[number];

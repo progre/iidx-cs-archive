@@ -43,8 +43,10 @@ export interface FreedPbFile {
 export interface ManifestPbBack {
   /** 表の曲が持たない難易度を鳴らす裏なら`true`(`ManifestVariant`と同じ) */
   forcedBack?: true;
-  /** 表の曲が持たない難易度 → それを出すこの裏の難易度(`ManifestVariant`と同じ) */
-  frontCharts?: Record<string, string>;
+  /** この裏の曲の中で譜面を移す組(`ManifestVariant`と同じ) */
+  chartMoves?: Record<string, string>;
+  /** `chartMoves`の移し先のうち、表の曲が持たない難易度(`ManifestVariant`と同じ) */
+  frontFills?: string[];
   /** 同じ表の曲の裏の中での番号 */
   position: number;
   /** PB 原盤の曲の song_id。表の曲の枠でもある */

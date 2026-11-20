@@ -1,11 +1,9 @@
 // 世代の周回で、全曲リストと曲DBから曲の行を作る。
-// 作った行に、組の相手の曲と、音を共有するPB原盤の曲が揃っているかも調べる。
+// 全曲リストで書いた組は、周回の後に結ぶ。
 
 import type {
   AnotherSwitchRow,
-  CatalogFiveKey,
   CatalogRow,
-  CatalogVariant,
   ManifestSongDraft,
   SharedAssetRow,
   SongmapDoc,
@@ -13,18 +11,10 @@ import type {
 import { type Era, groupEra1Jobs } from "../assets/mod.ts";
 import {
   anotherSwitchesOf,
-  assertVariantsBuilt,
-  fiveKeysOf,
   type ListingPorts,
   listingsOf,
   sharesOf,
-  variantsOf,
 } from "../catalog/mod.ts";
-import {
-  assertChartExclusions,
-  assertPairsIncluded,
-  assertShares,
-} from "../rows/mod.ts";
 import { indexKeyOf } from "../../index/mod.ts";
 import { buildGeneration, type VideoProbes } from "./build_generation.ts";
 
@@ -32,9 +22,7 @@ import { buildGeneration, type VideoProbes } from "./build_generation.ts";
 export interface LapRowsPorts<Elf> extends ListingPorts {
   anotherSwitchRows: () => AnotherSwitchRow[];
   catalogCopiesOf: (generation: string, elf: Elf) => Map<number, CatalogRow[]>;
-  catalogFiveKeys: () => CatalogFiveKey[];
   catalogRowsOf: (generation: string, elf: Elf) => Map<number, CatalogRow>;
-  catalogVariants: () => CatalogVariant[];
   sharedAssetRows: () => SharedAssetRow[];
 }
 
@@ -61,8 +49,6 @@ export async function lapRowsOf<Elf>(
     catalogRows,
     ports.anotherSwitchRows(),
   );
-  const variants = variantsOf(generation, catalogRows, ports.catalogVariants());
-  const fiveKeys = fiveKeysOf(generation, catalogRows, ports.catalogFiveKeys());
   const rows = await buildGeneration(
     generation,
     era,
@@ -79,16 +65,10 @@ export async function lapRowsOf<Elf>(
       generation,
       (songId) => [catalogRows.get(songId), ...copies.get(songId) ?? []],
       shares,
-      (line) => variants.get(line)?.variant,
       anothers,
-      fiveKeys,
     ),
     groupEra1Jobs(era1Jobs).get(generation) ?? new Map(),
   );
   console.timeEnd(`time ${generation} table rows`);
-  assertVariantsBuilt(variants, rows);
-  assertPairsIncluded(rows);
-  assertChartExclusions(rows);
-  assertShares(rows);
   return { catalogRows, rows };
 }

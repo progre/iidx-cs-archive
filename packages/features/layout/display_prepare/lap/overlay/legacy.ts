@@ -1,7 +1,11 @@
 // 3rd〜8thの曲のオーバーレイをPB形式へ組み直し、manifestの参照を置いたファイルへ向ける。
 // 枠は manifest を作るときに載せてあるので、ここでは`packages`だけを差し替える。
 
-import { type DisplaySong, generatedSourceArchive } from "@csa/core";
+import {
+  type DisplaySong,
+  generatedSourceArchive,
+  isProgressStep,
+} from "@csa/core";
 import {
   legacyOverlayPackage,
   recordOverlayPath,
@@ -52,12 +56,21 @@ export async function convertLegacyOverlays<
     manifest.songs,
     (song) => song.sourceGeneration,
   );
+  const total =
+    manifest.songs.filter((song) =>
+      ports.isLegacyOverlay(song.sourceGeneration)
+    ).length;
+  let done = 0;
   for (const index of order) {
     const song = manifest.songs[index];
     const generation = song.sourceGeneration;
     if (!ports.isLegacyOverlay(generation)) {
       songs[index] = song;
       continue;
+    }
+    done++;
+    if (isProgressStep(done, total)) {
+      console.log(`${done}/${total} ${generation} legacy overlay`);
     }
     const source = manifest.sources[generation];
     const at = { generation, songId: song.sourceSongIndex };

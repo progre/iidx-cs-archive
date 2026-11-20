@@ -9,6 +9,8 @@ export {
   type PbDisc,
   type PbSong,
   readPbSongs,
+  soundLengthOf,
+  type SoundMeasures,
 } from "./sources/lap/mod.ts";
 export type * from "./ports.ts";
 export {

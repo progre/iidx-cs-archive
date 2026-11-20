@@ -3,31 +3,38 @@
 import type { CatalogRow, ManifestSongDraft } from "@csa/core";
 import { manifestOrderOfGeneration, rowKey } from "../../build/rows/mod.ts";
 import {
-  withOtherGenerationFiveKeys,
-  withOtherGenerationFronts,
+  withCatalogFiveKeys,
+  withCatalogVariants,
   withPbSlotFronts,
 } from "../catalog/mod.ts";
+import {
+  assertChartExclusions,
+  assertPairsIncluded,
+  assertShares,
+} from "../rows/mod.ts";
 
-/** 全世代の周回を終えた後に、世代をまたぐ裏の曲と5鍵盤の曲を行へ足す */
+/**
+ * 全世代の周回を終えた後に、全曲リストで書いた組を行へ結ぶ。
+ * 組の相手がそろったことと、組に入る曲の指定に矛盾が無いことも調べる
+ */
 export function withOtherGenerationRows(
   rowsOf: ReadonlyMap<string, readonly ManifestSongDraft[]>,
   catalogRows: ReadonlyMap<string, ReadonlyMap<number, CatalogRow>>,
   variants: Parameters<typeof withPbSlotFronts>[2],
-  fiveKeys: Parameters<typeof withOtherGenerationFiveKeys>[2],
+  fiveKeys: Parameters<typeof withCatalogFiveKeys>[2],
 ) {
   const pbSlotted = withPbSlotFronts(
-    withOtherGenerationFronts(rowsOf, catalogRows, variants),
+    withCatalogVariants(rowsOf, catalogRows, variants),
     catalogRows,
     variants,
   );
-  return {
-    pbBacks: pbSlotted.pbBacks,
-    rowsOf: withOtherGenerationFiveKeys(
-      pbSlotted.rowsOf,
-      catalogRows,
-      fiveKeys,
-    ),
-  };
+  const result = withCatalogFiveKeys(pbSlotted.rowsOf, catalogRows, fiveKeys);
+  for (const rows of result.values()) {
+    assertPairsIncluded(rows);
+    assertChartExclusions(rows);
+    assertShares(rows);
+  }
+  return { pbBacks: pbSlotted.pbBacks, rowsOf: result };
 }
 
 /**
@@ -38,10 +45,9 @@ export function withOtherGenerationRows(
  */
 export function draftedLapRows<D extends ManifestSongDraft>(
   rows: readonly ManifestSongDraft[],
-  isPlayable: (row: ManifestSongDraft) => boolean,
   draftOf: (row: ManifestSongDraft) => D,
 ): { all: D[]; ordered: D[]; rows: ManifestSongDraft[] } {
-  const ordered = manifestOrderOfGeneration(rows, isPlayable).map(draftOf);
+  const ordered = manifestOrderOfGeneration(rows).map(draftOf);
   const draftedOf = new Map([
     ...ordered,
     ...rows.filter((row) => row.excluded !== undefined).map(draftOf),

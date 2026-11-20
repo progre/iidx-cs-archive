@@ -56,11 +56,12 @@ Deno.test("PB原盤の曲の写しの裏は、PBの枠に置いた表の曲の�
   }]);
 });
 
-Deno.test("front_chartsで出す難易度は、style*5 + rank のビットになる", () => {
+Deno.test("表の曲にも写す難易度は、style*5 + rank のビットになる", () => {
   const back = custom(300, 99, 0);
   const variantOf = {
     ...back.variantOf,
-    frontCharts: { dp_black: "dp_another", sp_black: "sp_another" },
+    chartMoves: { dp_black: "dp_another", sp_black: "sp_another" },
+    frontFills: ["dp_black", "sp_black"],
   };
   assertEquals(
     listRows(contentOf([{ ...back, variantOf }])),

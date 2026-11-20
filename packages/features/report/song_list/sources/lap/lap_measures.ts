@@ -2,9 +2,9 @@
 
 import type { ManifestSongDraft, OpenDisc, SoundPrint } from "@csa/core";
 import type { LapMeasurePorts } from "../../ports.ts";
+import { overlayMeasuresOf } from "./overlay_measures.ts";
 import { overlaySlicesOf } from "./overlay_slices.ts";
-import { overlayPrintsOf, soundPrintsOf } from "./prints.ts";
-import { sourceLengthsOf } from "./source_lengths.ts";
+import { type SoundMeasures, soundMeasuresOf } from "./sound_measures.ts";
 
 export interface LapMeasures {
   /** `overlaySourceOf`の識別子 → オーバーレイの中身のハッシュ。全曲リストで外した行の分も持つ */
@@ -17,7 +17,7 @@ export interface LapMeasures {
 
 /**
  * `songIds`は、世代の各行の曲番号である。`songs`は、下書きの欄を埋めた行である。
- * `knownSoundPrints`は、音のbundleを書くときに求めた音のハッシュである
+ * `knownSounds`は、音のbundleを書くときに読んだ音から求めたハッシュと長さである
  */
 export async function measureLap(
   ports: LapMeasurePorts,
@@ -26,33 +26,26 @@ export async function measureLap(
   elf: Uint8Array,
   songIds: Iterable<number>,
   songs: readonly ManifestSongDraft[],
-  knownSoundPrints: ReadonlyMap<string, SoundPrint>,
+  knownSounds: SoundMeasures,
 ): Promise<LapMeasures> {
-  console.time(`time ${generation} sound and overlay lengths`);
-  const overlays = overlaySlicesOf(ports, generation, elf, songIds);
-  const sourceLengths = await sourceLengthsOf(
-    ports,
-    opened,
-    generation,
-    songs,
-    overlays,
-  );
-  console.timeEnd(`time ${generation} sound and overlay lengths`);
   console.time(`time ${generation} sound and overlay hashes`);
-  const soundPrints = await soundPrintsOf(
+  const sounds = await soundMeasuresOf(
     ports,
     opened,
     generation,
     songs,
-    knownSoundPrints,
+    knownSounds,
   );
-  const contentPrints = await overlayPrintsOf(
+  const overlays = await overlayMeasuresOf(
     ports,
     opened,
     generation,
-    overlays,
-    sourceLengths,
+    overlaySlicesOf(ports, generation, elf, songIds),
   );
   console.timeEnd(`time ${generation} sound and overlay hashes`);
-  return { contentPrints, soundPrints, sourceLengths };
+  return {
+    contentPrints: overlays.prints,
+    soundPrints: sounds.prints,
+    sourceLengths: new Map([...sounds.lengths, ...overlays.lengths]),
+  };
 }

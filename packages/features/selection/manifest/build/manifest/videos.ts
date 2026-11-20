@@ -8,39 +8,75 @@ import type {
   PbVideoRedirect,
   SongmapSong,
 } from "@csa/core";
-import {
-  type AdoptionSources,
-  readVideoAdoptionTable,
-  type SongId,
-  type VideoAdoption,
-  type VideoAdoptionRow,
-  videoAdoptionsOf,
+import type {
+  AdoptionSources,
+  SongId,
+  VideoAdoption,
 } from "../adoption/mod.ts";
 import {
   adoptionsOf,
   adoptVideos,
+  aliasAdoptionsOf,
+  aliasPickerOf,
   redirectPbVideos,
+  withCommonMovieAliases,
 } from "../video_adoption/mod.ts";
 import type { IndexDoc } from "../../index/mod.ts";
 import type { ManifestBuildPorts, ManifestLaps } from "./ports.ts";
 
-// 同じ内容のムービーの差し替え表を読む。採用の判断は`adoption/`が決める。
-export function loadVideoAdoptions(index: IndexDoc): VideoAdoptionRow[] {
-  return videoAdoptionsOf(readVideoAdoptionTable(), index);
-}
-
 type Ports<Elf> = Pick<
   ManifestBuildPorts<Elf, unknown>,
-  "adoption" | "moviePicks" | "pbGeneration"
+  | "adoption"
+  | "convertsVideo"
+  | "generations"
+  | "movieAliases"
+  | "pbGeneration"
+  | "preferredConvertedVideoGeneration"
 >;
 
-/** 差し替え表とムービーの別名の表を読み、採用するムービーを曲ごとに決める */
-const loadAdoptions = <Elf>(
-  { moviePicks }: Ports<Elf>,
+/** 世代と曲番号から、曲の索引のキーを引く関数 */
+function songKeysOf(index: IndexDoc): (song: SongId) => string | undefined {
+  const keys = new Map(
+    Object.entries(index.songs).flatMap(([key, { generations }]) =>
+      Object.entries(generations).flatMap(([generation, entries]) =>
+        entries.map(({ song_id }) => [`${generation}:${song_id}`, key] as const)
+      )
+    ),
+  );
+  return ({ generation, songId }) => keys.get(`${generation}:${songId}`);
+}
+
+/**
+ * ムービーの別名の表と、全曲リストの`common_movie`の組から、採用するムービーを曲ごとに決める。
+ * 別名のムービーを使う曲は、別名ごとに選んだ1本を使う
+ */
+function loadAdoptions<Elf>(
+  {
+    convertsVideo,
+    generations,
+    movieAliases,
+    preferredConvertedVideoGeneration,
+  }: Ports<Elf>,
   index: IndexDoc,
+  catalogRows: ManifestLaps<Elf>["catalogRows"],
   sources: AdoptionSources,
-): VideoAdoption[] =>
-  adoptionsOf(loadVideoAdoptions(index), moviePicks(), sources);
+): VideoAdoption[] {
+  const aliases = withCommonMovieAliases({
+    aliases: movieAliases(),
+    generations,
+    commonMovieOf: ({ generation, songId }) =>
+      catalogRows.get(generation)?.get(songId)?.commonMovie,
+    songKeyOf: songKeysOf(index),
+  }, sources);
+  const rules = {
+    aliases,
+    convertsVideo,
+    generations,
+    preferredConvertedGeneration: preferredConvertedVideoGeneration,
+  };
+  const pick = aliasPickerOf(rules, sources);
+  return adoptionsOf(aliasAdoptionsOf(rules, pick, sources), pick, sources);
+}
 
 export interface AdoptedVideos<S extends ManifestSong> {
   freed: FreedPbFile[];
@@ -88,7 +124,7 @@ export function adoptedVideos<S extends ManifestSong, Elf>(
   pbSongmap: AdoptionSources["pbSongmap"] & {
     songs: readonly SongmapSong[];
   },
-  lapSongs: Pick<ManifestLaps<Elf>, "bytes" | "sources">,
+  lapSongs: Pick<ManifestLaps<Elf>, "bytes" | "catalogRows" | "sources">,
   registerSource: (generation: string) => void,
   keepsPbSong: (adoption: { song: SongId }) => boolean,
 ): AdoptedVideos<S> {
@@ -106,6 +142,7 @@ export function adoptedVideos<S extends ManifestSong, Elf>(
   const adoptions = loadAdoptions(
     ports,
     lapSongs.sources.index,
+    lapSongs.catalogRows,
     adoptionFrom,
   );
   const adoption = adoptVideos(built, adoptions, adoptionFrom);

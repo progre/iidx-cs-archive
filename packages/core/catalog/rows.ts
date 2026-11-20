@@ -18,11 +18,11 @@ export type Chart =
 /** 組の中での行の扱い。組は`index_title`(無ければ`title`)が同じ行で作る */
 interface CatalogFront {
   /** 表の曲が持たない難易度 → それを出す裏の曲の難易度。どちらも全曲リストの譜面の列名 */
-  charts?: Partial<Record<Chart, Chart>>;
+  chartMoves?: Partial<Record<Chart, Chart>>;
   /** 組の5鍵盤版なら`true`。`front_rule`に`five_keys`と書く */
   fiveKeys?: true;
-  /** `front`に`*`を書いた行。最も後の作品の行の代わりに、組の表にする */
-  preferred?: true;
+  /** `save_slot_owner`に`*`を書いた行。最も後の作品の行の代わりに、組のセーブの枠の持ち主にする */
+  slotOwner?: true;
   /** 原作の組と同じ条件で差し替える裏なら、その条件。書かない裏は、選んで出す裏(`custom`)になる */
   rule?: CatalogRule;
 }
@@ -54,6 +54,11 @@ export interface CatalogRow {
   artist: string | null;
   /** 曲を入れるバージョン別フォルダーの略号。空ならnullになり、フォルダーは作品番号の規則が決める */
   folder: string | null;
+  /**
+   * CSAが使うムービーを共通にする組のキー。書いた行だけが持つ。
+   * `*`は曲名(索引のキー)が同じ曲どうしの組、それ以外はその文字列が同じ曲どうしの組である
+   */
+  commonMovie?: string;
   /** 値を書いた譜面だけを持つ */
   levels: Partial<Record<Chart, number>>;
   /** 難易度の列に`x`を書いた、収録しない譜面 */
@@ -62,6 +67,6 @@ export interface CatalogRow {
   exclude: boolean;
   /** 人が書くメモ。空ならnull。曲リストHTMLがメモの列に出す */
   note: string | null;
-  /** 組の中での扱い。`front`・`front_charts`・`front_rule`のどれかを書いた行だけが持つ */
+  /** 組の中での扱い。`save_slot_owner`・`chart_moves`・`front_rule`のどれかを書いた行だけが持つ */
   front?: CatalogFront;
 }

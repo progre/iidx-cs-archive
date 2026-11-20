@@ -51,7 +51,7 @@ export interface SongVariant {
   /** `previousSong`で、直前に演奏していると切り替わる曲のsong_id */
   afterSongId?: number;
   /** `custom`で、表の曲が持たない難易度 → それを出す裏の曲の難易度。`sp_black`の形 */
-  frontCharts?: Record<string, string>;
+  chartMoves?: Record<string, string>;
   /** 表の曲の世代。書かなければ裏と同じ世代である。`pb`なら、PB原盤の曲を表にする */
   generation?: string;
   /**
@@ -101,7 +101,7 @@ interface Candidate {
   /** 全曲リストでこの曲を書いた行の番号 */
   catalogLine?: number;
   /** 表の曲の中で譜面を移す組。移し先 → 移し元の難易度名 */
-  movedCharts?: Record<string, string>;
+  chartMoves?: Record<string, string>;
   /** 全曲リストの`note`。外した曲では、外した理由を示す */
   note?: string;
   /** 表を PB 以外の版にした組の表の曲なら、PB 原盤の曲の song_id。曲は PB の曲の枠に置く */

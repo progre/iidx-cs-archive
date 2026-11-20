@@ -12,16 +12,13 @@ import { buildGenerationRows } from "./generation_rows.ts";
 import { summarize } from "./assemble.ts";
 
 Deno.test("全曲リストに2行書いた曲は、行ごとに1行にする", async () => {
-  const back = listing({
-    variant: { generation: "dd", rule: "custom", songId: 74 },
-  });
   const rows = await buildGenerationRows(
     contextOf("10th", [sourceFile(1)]),
     [songmapSong(1)],
     () => "ONE",
-    () => [listing(), back],
+    () => [listing(), listing({ line: 3 })],
   );
-  assertEquals(rows.map((row) => row.variantOf?.songId), [undefined, 74]);
+  assertEquals(rows.map((row) => row.catalogLine), [2, 3]);
 });
 
 const twoDifficulties = songmapSong(1, {

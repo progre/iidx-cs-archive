@@ -19,6 +19,7 @@ import { chartedSongs } from "../charts/mod.ts";
 import { manifestReportLines } from "../report.ts";
 import {
   assembleManifest,
+  manifestOrderOf,
   plannedSongs,
   selectSongs,
   targetSongCountOf,
@@ -75,10 +76,12 @@ export function buildManifest<Elf, Excluded>(
     isPlayable: ports.isPlayable,
   });
   const { detached, selected } = selection;
-  // PB の枠を使う表の曲は、窓の曲数に数えない
-  const targetSongCount = targetSongCountOf(
-    selected.filter((song) => song.pbSlot === undefined).length,
-  );
+  // 窓の曲数は、原盤が欠けても、すべての原盤のときと同じにする。セーブの記録の並びを保つためである
+  const targetSongCount = targetSongCountOf(ports.saveSlots.count);
+  const slotOf = (song: ManifestSongDraft) =>
+    song.catalogLine === undefined
+      ? undefined
+      : ports.saveSlots.indexOf(song.sourceGeneration, song.catalogLine);
   const { keepsPbSong, untaken } = pbSlotFilter(lapSongs.pbBacks);
 
   const sources: Record<string, ManifestSource> = {};
@@ -91,7 +94,12 @@ export function buildManifest<Elf, Excluded>(
   const pbSongmap = lapSongs.sources.songmapOf(pbGeneration);
   const folders = loadFolderRules(ports, lapSongs);
   const removed = ports.excludedSongs(songs, lapSongs.catalogRows, folders);
-  const finished = plannedSongs(selection, targetSongCount).map((song) =>
+  // 曲indexを振った後に、周回で素材を書いた並びへ戻す
+  const planned = manifestOrderOf(
+    plannedSongs(selection, targetSongCount, slotOf),
+    generations,
+  );
+  const finished = planned.map((song) =>
     ports.finishManifestSong(
       song,
       lapSongs.catalogRows.get(song.sourceGeneration) ??

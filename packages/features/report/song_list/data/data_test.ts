@@ -4,11 +4,7 @@ import { assertEquals, assertThrows } from "@std/assert";
 import type { ListEntry, SongmapSong } from "@csa/core";
 import type { RowPorts } from "../ports.ts";
 import { songListData as dataOf } from "../sources/mod.ts";
-import {
-  type SortedRow,
-  withFrontCharts,
-  withMovedCharts,
-} from "./rows/mod.ts";
+import { type SortedRow, withFrontFills, withMovedCharts } from "./rows/mod.ts";
 import type {
   ListedExcludedSong,
   ListedPbSong,
@@ -141,13 +137,13 @@ Deno.test("表の曲の行に裏の曲で出す譜面を足し、同じ欄に2�
     ({
       row: { charts: { sp_beginner: own }, saveIndex },
     }) as unknown as SortedRow;
-  const [front, other] = withFrontCharts([row(7), row(8)], [sb]);
+  const [front, other] = withFrontFills([row(7), row(8)], [sb]);
   assertEquals([front.row.charts.sp_beginner, front.row.movedIn?.sp_beginner], [
     own,
     sb.chart,
   ]);
   assertEquals(other.row.movedIn, undefined);
-  assertThrows(() => withFrontCharts([row(7)], [sb, sb]));
+  assertThrows(() => withFrontFills([row(7)], [sb, sb]));
 });
 
 Deno.test("PB原盤の曲・収録する曲・外した曲を、並びキーの順に並べる", () => {

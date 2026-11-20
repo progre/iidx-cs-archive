@@ -3,6 +3,8 @@
 // オーバーレイのハッシュは、その長さまでの中身から求める。
 
 import {
+  inDiscOrder,
+  inKeyOrder,
   isProgressStep,
   SEC,
   type SongmapDoc,
@@ -47,13 +49,19 @@ async function pbOverlaysOf(
     throw new Error(`PBの原盤に${ports.dataArchive}が無い`);
   }
   const indices = [...new Set(songs.flatMap((song) => song.overlay.packages))];
+  const rows = inDiscOrder(
+    indices.map((index) => ({
+      index,
+      row: ports.tocRowOf(elf, ports.pbTocFileOffset, index),
+    })),
+    ({ row }) => row.sector,
+  );
   const lengths = new Map<string, number>();
   const prints = new Map<string, string>();
-  for (const [done, index] of indices.entries()) {
-    if (isProgressStep(done + 1, indices.length)) {
-      console.log(`${done + 1}/${indices.length} pb overlay`);
+  for (const [done, { index, row }] of rows.entries()) {
+    if (isProgressStep(done + 1, rows.length)) {
+      console.log(`${done + 1}/${rows.length} pb overlay`);
     }
-    const row = ports.tocRowOf(elf, ports.pbTocFileOffset, index);
     const start = (archive.lba + row.sector) * SEC;
     const source = overlaySourceOf("pb", index);
     const length = await ports.ifPayloadLength((offset, length) =>
@@ -63,7 +71,12 @@ async function pbOverlaysOf(
     const bytes = await disc.readAt(start, Math.min(length, row.count * SEC));
     prints.set(source, await ports.printOf(bytes));
   }
-  return { lengths, prints };
+  // 曲リストは表の並びのまま書くので、読んだ順ではなく元の順に戻す
+  const sources = indices.map((index) => overlaySourceOf("pb", index));
+  return {
+    lengths: inKeyOrder(lengths, sources),
+    prints: inKeyOrder(prints, sources),
+  };
 }
 
 /** PBの周回で、PB原盤の曲と、そのオーバーレイの長さとハッシュを読む */

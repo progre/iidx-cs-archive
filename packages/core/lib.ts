@@ -60,6 +60,9 @@ export type * from "./source/mod.ts";
 
 export {
   type DiscImage,
+  discOffsetOf,
+  inDiscOrder,
+  inKeyOrder,
   type OpenDisc,
   type PairlessSourceSong,
   SEC,

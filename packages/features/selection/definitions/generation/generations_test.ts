@@ -1,6 +1,12 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertThrows } from "@std/assert";
 import { chartKeyRuleOf } from "../songmap/mod.ts";
-import { chartFileIndices, GENERATIONS, songDbPath } from "./generations.ts";
+import {
+  chartFileIndices,
+  GENERATIONS,
+  indexGenerationsOf,
+  lapOrderOf,
+  songDbPath,
+} from "./generations.ts";
 
 Deno.test("素材世代は発売順で、PBを含まない", () => {
   assertEquals(GENERATIONS.slice(0, 2), ["3rd", "4th"]);
@@ -40,4 +46,20 @@ Deno.test("譜面のファイルは、.plyのファイルを参照している",
     { refs: ["A.if"] },
   ];
   assertEquals(chartFileIndices(files), [0, 2]);
+});
+
+Deno.test("読む原盤の順は、選んだ世代を発売順に並べ、us・emp・PB を後ろに回す", () => {
+  assertEquals(lapOrderOf(["emp", "us", "red", "3rd"]), [
+    "3rd",
+    "red",
+    "us",
+    "emp",
+    "pb",
+  ]);
+  assertEquals(lapOrderOf(["red"]), ["red", "pb"]);
+  assertEquals(indexGenerationsOf(["emp", "3rd"]), ["3rd", "emp", "pb"]);
+});
+
+Deno.test("素材世代でない世代を選ぶと止まる", () => {
+  assertThrows(() => lapOrderOf(["pb"]), Error, "素材世代ではない: pb");
 });

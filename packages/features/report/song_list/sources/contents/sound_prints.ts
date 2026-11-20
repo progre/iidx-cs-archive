@@ -1,7 +1,14 @@
 // PBの曲の音について、本体とヘッダーのハッシュをPBの原盤から求める。
 // 世代の音のハッシュは周回で求めてあるので、PBの分を足して曲リストへ渡す。
 
-import { SEC, type SongmapDoc, type SoundPrint } from "@csa/core";
+import {
+  discOffsetOf,
+  inDiscOrder,
+  inKeyOrder,
+  SEC,
+  type SongmapDoc,
+  type SoundPrint,
+} from "@csa/core";
 import type { LapMeasurePorts } from "../../ports.ts";
 import type { PbDisc } from "../lap/mod.ts";
 
@@ -19,15 +26,29 @@ export async function withPbSoundPrints(
       ["keysound", pair.keysound] as const,
       ["bgm", pair.bgm] as const,
     ]);
-  for (const [kind, index] of sounds) {
-    const source = `pb:${index}`;
-    if (index === null || prints.has(source)) {
-      continue;
+  const targets = sounds.flatMap(([kind, index]) => {
+    if (index === null || prints.has(`pb:${index}`)) {
+      return [];
     }
     const file = fileOf.get(index);
-    const archive = file &&
-      pbDisc.info.files.get(file.archive.toUpperCase().split(";")[0]);
-    if (file === undefined || archive === undefined) {
+    if (file === undefined) {
+      throw new Error(`PBのファイル一覧にABC index ${index}が無い`);
+    }
+    return [{ file, index, kind }];
+  });
+  const inOrder = inDiscOrder(
+    targets,
+    ({ file }) => discOffsetOf(pbDisc.info.files, file.archive, file.offset),
+  );
+  for (const { file, index, kind } of inOrder) {
+    const source = `pb:${index}`;
+    if (prints.has(source)) {
+      continue;
+    }
+    const archive = pbDisc.info.files.get(
+      file.archive.toUpperCase().split(";")[0],
+    );
+    if (archive === undefined) {
       throw new Error(`PBのファイル一覧にABC index ${index}が無い`);
     }
     const bytes = await pbDisc.readAt(
@@ -36,5 +57,9 @@ export async function withPbSoundPrints(
     );
     prints.set(source, await ports.soundPrint(kind, bytes));
   }
-  return prints;
+  // 曲リストは表の並びのまま書くので、読んだ順ではなく元の順に戻す
+  return inKeyOrder(prints, [
+    ...generationPrints.keys(),
+    ...targets.map(({ index }) => `pb:${index}`),
+  ]);
 }

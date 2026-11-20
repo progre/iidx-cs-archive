@@ -36,35 +36,41 @@ function sectors(bytes: number): number {
   return Math.ceil(bytes / SEC);
 }
 
+/** 曲indexを昇順に並べたとき、`start`からの連番になっていなければ止める */
+function assertConsecutive(indices: readonly number[], start: number): void {
+  indices.toSorted((a, b) => a - b).forEach((index, i) => {
+    if (index !== start + i) {
+      throw new Error(`target song indexが連続していない: ${index}`);
+    }
+  });
+}
+
 function validateManifest(manifest: IndividualAssetManifest): void {
-  const frontIndices = new Set(
-    manifest.songs.filter((song) => song.variantOf === undefined)
-      .map((song) => song.targetSongIndex),
-  );
+  const fronts = manifest.songs.filter((song) => song.variantOf === undefined);
+  const frontIndices = new Set(fronts.map((song) => song.targetSongIndex));
   const pbSlots = new Set((manifest.pbBacks ?? []).map((back) => back.songId));
+  // 選曲できる曲は窓(99からtargetSongCountの手前まで)へ重ならずに置き、裏エントリーは窓の外へ連番で置く。
+  // 窓の中は、原盤が欠けた曲の曲indexだけ空く。
+  // 表を PB 以外の版にした組の表の曲は、PB の曲の枠に置く
+  const added = fronts.map((song) => song.targetSongIndex)
+    .filter((index) => !pbSlots.has(index));
+  const outside = added.find((index) =>
+    index < 99 || index >= manifest.targetSongCount
+  );
+  if (outside !== undefined || new Set(added).size !== added.length) {
+    throw new Error(`target song indexが窓の外か重なっている: ${outside}`);
+  }
+  assertConsecutive(
+    manifest.songs.filter((song) => song.variantOf !== undefined)
+      .map((song) => song.targetSongIndex),
+    manifest.targetSongCount,
+  );
+  const frontCount = added.length;
   const keys = new Set<string>();
   let count = 0;
-  let frontCount = 0;
-  let variantCount = 0;
   for (const song of manifest.songs) {
-    // 選曲できる曲は99から連番、裏エントリーは窓(targetSongCount)の外へ続けて並ぶ。
-    // 表を PB 以外の版にした組の表の曲は、PB の曲の枠に置く
-    const expected = song.variantOf !== undefined
-      ? manifest.targetSongCount + variantCount++
-      : pbSlots.has(song.targetSongIndex)
-      ? song.targetSongIndex
-      : 99 + frontCount++;
-    if (song.targetSongIndex !== expected) {
-      throw new Error(
-        `target song indexが連続していない: ${song.targetSongIndex}`,
-      );
-    }
-    if (song.variantOf === undefined) {
-      // 配置器は裏エントリーへ差し替え元の枠を写すので、表が先に並んでいる必要がある
-      if (variantCount > 0) {
-        throw new Error("裏エントリーの後ろに選曲できる曲がある");
-      }
-    } else if (
+    if (
+      song.variantOf !== undefined &&
       // 99未満の枠はPB原盤の曲で、manifestに載らなくても曲DBにある
       song.variantOf.targetSongIndex >= 99 &&
       !frontIndices.has(song.variantOf.targetSongIndex)

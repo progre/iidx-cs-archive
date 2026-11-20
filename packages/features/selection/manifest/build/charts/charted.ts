@@ -2,7 +2,7 @@
 
 import type { FinishedSong, ManifestPbBack, SongmapSong } from "@csa/core";
 import { withChartFills, withOwnMoves } from "./filled_charts.ts";
-import { hasChartOf, withMovedCharts } from "./moved_charts.ts";
+import { hasChartOf, withFrontFills } from "./front_fills.ts";
 import type { ChartPorts } from "./ports.ts";
 
 /** 表に無い難易度を埋めるときは、PB を最も後に、us を最も前に数える */
@@ -34,6 +34,6 @@ export function chartedSongs(
   );
   return {
     pbBacks: filled.pbBacks,
-    songs: withMovedCharts(filled.songs, withOwnMoves(finished, hasChart)),
+    songs: withFrontFills(filled.songs, withOwnMoves(finished, hasChart)),
   };
 }

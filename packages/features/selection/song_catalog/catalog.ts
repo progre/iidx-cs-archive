@@ -11,8 +11,12 @@ import { rowsBySongId } from "./levels/writing/mod.ts";
 import {
   catalogFiveKeysOf,
   catalogVariantsOf,
+  type FrontChooser,
   type GenerationCatalog,
   type IsFiveKeyTwin,
+  ownerAsFront,
+  type SaveSlots,
+  saveSlotsOf,
   type SongKeyOf,
   withGroupSubtitles,
 } from "./file/groups/mod.ts";
@@ -23,6 +27,8 @@ import { generationOfCatalogFile } from "./review.ts";
 export interface SongCatalogPorts<Elf> {
   /** `songId`が原作の5鍵盤版なら、その表の曲の曲番号を返す */
   fiveKeyOf: (generation: string, songId: number) => number | undefined;
+  /** 原盤を読む世代なら真。読まない世代の全曲リストは、組に入れない */
+  isRead: (generation: string) => boolean;
   /** 曲DBの曲番号と管理名。定義の無い世代なら例外にする */
   songsOf: (
     generation: string,
@@ -38,18 +44,24 @@ export interface SongCatalogPorts<Elf> {
  */
 const US_INDEX_PREFIX = /^\d+ \d+_/;
 
-/** 全世代の全曲リストを読む。ファイル名は`<連番>_<世代>.tsv`なので、名前の順が世代の順になる */
-const allCatalogs = (): GenerationCatalog[] =>
+/**
+ * 原盤を読む世代の全曲リストを読む。ファイル名は`<連番>_<世代>.csv`なので、名前の順が世代の順になる。
+ * 読まない世代の行は、組の表や裏にできないので読まない
+ */
+const allCatalogs = (
+  isRead: (generation: string) => boolean,
+): GenerationCatalog[] =>
   catalogFileNames().toSorted().flatMap((name) => {
     const generation = generationOfCatalogFile(name);
-    return generation === undefined
+    return generation === undefined || !isRead(generation)
       ? []
       : [{ generation, rows: parseSongCatalog(readCatalogFile(name)) }];
   });
 
 export function songCatalog<Elf>(
-  { fiveKeyOf, songsOf, titleKeyOf }: SongCatalogPorts<Elf>,
+  { fiveKeyOf, isRead, songsOf, titleKeyOf }: SongCatalogPorts<Elf>,
 ) {
+  const readCatalogs = () => allCatalogs(isRead);
   /** 同じ曲は、世代をまたぐ曲の索引のキーで見分ける */
   const songKeyOf: SongKeyOf = (generation, { indexTitle, name }) =>
     titleKeyOf(
@@ -61,10 +73,24 @@ export function songCatalog<Elf>(
   const isFiveKeyTwin: IsFiveKeyTwin = (generation, { songId }) =>
     songId !== null && fiveKeyOf(generation, songId) !== undefined;
 
-  /** 組の副題を表の行に寄せた、全世代の全曲リスト。全曲リストはビルドの間に変わらないので、1回だけ読む */
+  /**
+   * 組の表の選び方。表の曲を選ぶ材料(原盤の素材)は周回の後にそろうので、それまでは枠の持ち主を表にする。
+   * 表の行が変わると副題の付く行も変わるので、選び方を替えたら副題を寄せ直す
+   */
+  let chooseFront: FrontChooser = ownerAsFront;
+
+  /** 全曲リストはビルドの間に変わらないので、曲indexの表は1回だけ作る */
+  let slots: SaveSlots | undefined;
+
+  /** 組の副題を表の行に寄せた、全世代の全曲リスト。全曲リストはビルドの間に変わらないので、選び方ごとに1回だけ読む */
   let grouped: GenerationCatalog[] | undefined;
   const groupedCatalogs = (): GenerationCatalog[] =>
-    grouped ??= withGroupSubtitles(allCatalogs(), songKeyOf, isFiveKeyTwin);
+    grouped ??= withGroupSubtitles(
+      readCatalogs(),
+      songKeyOf,
+      isFiveKeyTwin,
+      chooseFront,
+    );
 
   /** `elf`は世代の曲DBを持つELFである。リストの行を、曲DBの管理名と照合する */
   const catalogMatchOf = (generation: string, elf: Elf) => {
@@ -99,7 +125,7 @@ export function songCatalog<Elf>(
     },
     /** 全曲リストに書いた5鍵盤版の組 */
     catalogFiveKeys: (): CatalogFiveKey[] =>
-      catalogFiveKeysOf(allCatalogs(), songKeyOf, isFiveKeyTwin),
+      catalogFiveKeysOf(readCatalogs(), songKeyOf, isFiveKeyTwin, chooseFront),
     /**
      * 曲が全曲リストに書かれた行。同じ曲を2行に書いた曲は、行ごとに曲名やフォルダーが違うので、曲番号でなく行番号で引く。
      * 行番号を持たない曲は`undefined`である
@@ -120,7 +146,18 @@ export function songCatalog<Elf>(
       rowsBySongId(catalogMatchOf(generation, elf).matches),
     /** 全曲リストに書いた裏の組 */
     catalogVariants: (): CatalogVariant[] =>
-      catalogVariantsOf(allCatalogs(), songKeyOf, isFiveKeyTwin),
+      catalogVariantsOf(readCatalogs(), songKeyOf, isFiveKeyTwin, chooseFront),
     groupedCatalogs,
+    /** 組の表の選び方を替える。替えた後に引く行は、新しい表の行に副題を寄せる */
+    useFrontChooser: (chooser: FrontChooser): void => {
+      chooseFront = chooser;
+      grouped = undefined;
+    },
+    /**
+     * 組のセーブの曲index。原盤を読む世代によらず、全世代の全曲リストから決める。
+     * どの原盤の組み合わせで作っても、同じ曲を同じ曲indexに置くためである
+     */
+    saveSlots: (): SaveSlots =>
+      slots ??= saveSlotsOf(allCatalogs(() => true), songKeyOf, isFiveKeyTwin),
   };
 }

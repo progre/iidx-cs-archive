@@ -7,9 +7,10 @@ import type { ListedPbSong } from "../input.ts";
 import {
   chartsOf,
   folderFieldsOf,
-  type FrontChart,
+  type FrontFill,
   overlayOf,
   type SortedRow,
+  splitMoves,
 } from "./row_fields.ts";
 import { type BytesOf, pbSize } from "../sizes.ts";
 
@@ -66,20 +67,20 @@ export function withPbBacks(
   rows: readonly SortedRow[],
   backs: readonly ManifestPbBack[],
   fronts: readonly PbBackFront[],
-): { frontCharts: FrontChart[]; rows: SortedRow[] } {
+): { frontFills: FrontFill[]; rows: SortedRow[] } {
   const backOf = new Map(backs.map((back) => [back.songId, back]));
   const frontAt = new Map(fronts.map((song) => [song.targetSongIndex, song]));
-  const frontCharts: FrontChart[] = [];
+  const frontFills: FrontFill[] = [];
   const result = rows.map((sorted): SortedRow => {
     const back = backOf.get(sorted.row.songId);
     const front = back === undefined ? undefined : frontAt.get(back.songId);
     if (back === undefined || front === undefined) {
       return sorted;
     }
-    for (const [name, from] of Object.entries(back.frontCharts ?? {})) {
+    for (const [name, from] of splitMoves(back).fills) {
       const chart = sorted.row.charts[from];
       if (chart !== undefined) {
-        frontCharts.push({
+        frontFills.push({
           chart: { ...chart, from: { chart: from, generation: "pb" } },
           name,
           saveIndex: back.songId,
@@ -103,5 +104,5 @@ export function withPbBacks(
       },
     };
   });
-  return { frontCharts, rows: result };
+  return { frontFills, rows: result };
 }

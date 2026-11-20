@@ -19,6 +19,9 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+      # Release の本文は CHANGELOG.md のタグの節から作る。節が無ければ、ビルドの前に止める
+      - if: startsWith(github.ref, 'refs/tags/')
+        run: deno run --allow-read=CHANGELOG.md packages/utils/release_notes/main.ts "$GITHUB_REF_NAME" > "$RUNNER_TEMP/release_notes.md"
       - run: deno fmt --check
       - run: deno lint
       - run: deno check packages
@@ -34,4 +37,4 @@ jobs:
       - if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" build/iidx-cs-archive.zip --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" build/iidx-cs-archive.zip --notes-file "$RUNNER_TEMP/release_notes.md"

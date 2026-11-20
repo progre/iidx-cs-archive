@@ -63,10 +63,9 @@ export const listing = (extra: Partial<Listing> = {}): Listing => ({
   fiveKeyOf: null,
   levels: {},
   line: 2,
-  movedCharts: null,
+  chartMoves: null,
   note: null,
   share: null,
-  variant: null,
   ...extra,
 });
 

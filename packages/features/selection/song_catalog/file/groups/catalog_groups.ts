@@ -1,6 +1,7 @@
-// 全曲リストの行を、`index_title`(無ければ`title`)から作るキーと`edition`で組にまとめ、組の表を選ぶ。
+// 全曲リストの行を、`index_title`(無ければ`title`)から作るキーと`edition`で組にまとめ、
+// 組のセーブの枠の持ち主と表を選ぶ。
 
-import type { CatalogRow } from "../tsv.ts";
+import type { CatalogRow } from "../csv.ts";
 
 /** 世代1つ分の全曲リスト */
 export interface GenerationCatalog {
@@ -19,9 +20,23 @@ export interface GroupRow {
   row: CatalogRow;
 }
 
+/**
+ * 組の候補の行から、表(選曲リストに並ぶ行)を選ぶ。`owner`は組のセーブの枠の持ち主で、候補に含まれる。
+ * 原作の5鍵盤版の組には使わない
+ */
+export type FrontChooser = (
+  candidates: readonly GroupRow[],
+  owner: GroupRow,
+) => GroupRow;
+
+/** 枠の持ち主を表にする。表の曲を選ぶ材料がそろう前に使う */
+export const ownerAsFront: FrontChooser = (_, owner) => owner;
+
 export interface CatalogGroup {
   /** 選曲リストに並ぶ表 */
   front: GroupRow;
+  /** 組のセーブの枠の持ち主。表と同じ行のこともある */
+  owner: GroupRow;
   /** 原作の5鍵盤版 */
   twin?: GroupRow;
   /** 表と原作の5鍵盤版を除いた行。全曲リストのファイルの順に並ぶ */
@@ -59,34 +74,46 @@ const linesOf = (rows: readonly GroupRow[]) =>
   `${rows[0].generation}の全曲リスト line ` +
   rows.map(({ row }) => row.line).join(", ");
 
-/** `front`を書いた行が無ければ、最も後の作品の行を表にする */
-function frontOf(
+/**
+ * 組のセーブの枠の持ち主。組に PB の行があれば、PB の行である。
+ * 無ければ`save_slot_owner`を書いた行で、それも無ければ最も後の作品の行である
+ */
+function ownerOf(
   catalogs: readonly GenerationCatalog[],
   candidates: readonly GroupRow[],
 ): GroupRow {
-  const preferred = candidates.filter(({ row }) => row.front?.preferred);
-  if (preferred.length > 1) {
-    throw new Error(`${linesOf(preferred)}: 組の表を2行に書いている`);
+  const owners = candidates.filter(({ row }) => row.front?.slotOwner);
+  if (owners.length > 1) {
+    throw new Error(`${linesOf(owners)}: 組の枠の持ち主を2行に書いている`);
   }
-  if (preferred.length === 1) {
-    return preferred[0];
+  const pb = candidates.find(({ generation }) => generation === "pb");
+  if (pb !== undefined && owners.length === 1) {
+    throw new Error(
+      `${linesOf(owners)}: 組に PB の行があるので、枠の持ち主を書けない`,
+    );
+  }
+  if (owners.length === 1) {
+    return owners[0];
   }
   const latest = Math.max(
     ...candidates.map(({ generation }) => orderOf(catalogs, generation)),
   );
-  const fronts = candidates.filter(({ generation }) =>
+  const latestRows = candidates.filter(({ generation }) =>
     orderOf(catalogs, generation) === latest
   );
-  if (fronts.length > 1) {
-    throw new Error(`${linesOf(fronts)}: 組の表の候補が同じ作品に2行ある`);
+  if (latestRows.length > 1) {
+    throw new Error(
+      `${linesOf(latestRows)}: 組の枠の持ち主の候補が同じ作品に2行ある`,
+    );
   }
-  return fronts[0];
+  return latestRows[0];
 }
 
 function groupOf(
   catalogs: readonly GenerationCatalog[],
   rows: readonly GroupRow[],
   isTwin: IsFiveKeyTwin,
+  chooseFront: FrontChooser,
 ): CatalogGroup {
   const twins = rows.filter(({ generation, row }) => isTwin(generation, row));
   if (twins.length > 1) {
@@ -96,9 +123,11 @@ function groupOf(
   if (candidates.length === 0) {
     throw new Error(`${linesOf(rows)}: 組に表にできる行が無い`);
   }
-  const front = frontOf(catalogs, candidates);
+  const owner = ownerOf(catalogs, candidates);
+  const front = chooseFront(candidates, owner);
   return {
     front,
+    owner,
     ...(twins.length === 0 ? {} : { twin: twins[0] }),
     others: rows.filter((r) => r !== front && !twins.includes(r)),
   };
@@ -112,6 +141,7 @@ export function catalogGroupsOf(
   catalogs: readonly GenerationCatalog[],
   keyOf: SongKeyOf,
   isTwin: IsFiveKeyTwin,
+  chooseFront: FrontChooser = ownerAsFront,
 ): CatalogGroup[] {
   const rows = catalogs.flatMap(({ generation, rows }) =>
     rows.filter((row) => !row.exclude).map((row) => ({ generation, row }))
@@ -120,7 +150,9 @@ export function catalogGroupsOf(
     const key = keyOf(r.generation, r.row);
     return key === "" ? r : `${key}\t${r.row.edition ?? ""}`;
   });
-  return [...byKey.values()].map((group) => groupOf(catalogs, group, isTwin));
+  return [...byKey.values()].map((group) =>
+    groupOf(catalogs, group, isTwin, chooseFront)
+  );
 }
 
 /**
@@ -132,9 +164,11 @@ export function withGroupSubtitles(
   catalogs: readonly GenerationCatalog[],
   keyOf: SongKeyOf,
   isTwin: IsFiveKeyTwin,
+  chooseFront: FrontChooser = ownerAsFront,
 ): GenerationCatalog[] {
   const subtitleOf = new Map<CatalogRow, string | null>();
-  for (const { front, others } of catalogGroupsOf(catalogs, keyOf, isTwin)) {
+  const groups = catalogGroupsOf(catalogs, keyOf, isTwin, chooseFront);
+  for (const { front, others } of groups) {
     const members = [front, ...others].filter(({ row }) =>
       row.front?.fiveKeys !== true
     );

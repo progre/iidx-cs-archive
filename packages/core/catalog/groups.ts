@@ -7,7 +7,7 @@ type CatalogRule = NonNullable<NonNullable<CatalogRow["front"]>["rule"]>;
 /** 原作に無い裏エントリーの組1つ。`title`と`frontTitle`は、全曲リストの`title`列と同じ書き方である */
 export interface CatalogVariant {
   /** 表の曲が持たない難易度 → それを出す裏の曲の難易度。どちらも`sp_black`の形 */
-  frontCharts?: Record<string, string>;
+  chartMoves?: Record<string, string>;
   /** 表の曲の世代。裏と別の世代や`pb`でもよい */
   frontGeneration: string;
   /**
@@ -24,6 +24,8 @@ export interface CatalogVariant {
   position?: number;
   /** 原作の組と同じ条件で差し替える裏なら、その条件 */
   rule?: CatalogRule;
+  /** 組のセーブの枠の持ち主なら`true`。表の曲は、この曲の曲indexに置く */
+  slotOwner?: true;
   title: string;
 }
 

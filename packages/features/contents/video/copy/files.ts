@@ -3,7 +3,13 @@
 // ファイル名は原盤の中の場所と大きさから決まり、原盤は変わらない。
 // そのため、同じ名前と大きさのファイルが前のビルドから残っていれば、写し直さずに使う。
 
-import { type OpenDisc, SEC } from "@csa/core";
+import {
+  discOffsetOf,
+  inDiscOrder,
+  inKeyOrder,
+  type OpenDisc,
+  SEC,
+} from "@csa/core";
 import { fileSizeOf, resetDirectory, writeCopyFile } from "./copy_gateway.ts";
 import {
   copiedVideosOf,
@@ -37,10 +43,15 @@ export async function writeCopiedVideos<T extends CopyAsset>(
   if (!reuse) {
     resetDirectory(`${discsDirectory}/${generation}/video_copy`);
   }
-  const written = new Map<string, { path: string; size: number }>();
+  const byKey = new Map<string, { path: string; size: number }>();
   let reused = 0;
   const videos = [...Map.groupBy(copiedVideosOf(assets), copyKey)];
-  for (const [index, [key, [asset]]] of videos.entries()) {
+  const inOrder = inDiscOrder(
+    videos,
+    ([, [asset]]) =>
+      discOffsetOf(files, asset.sourceArchive, asset.sourceOffset),
+  );
+  for (const [index, [key, [asset]]] of inOrder.entries()) {
     console.log(`${index + 1}/${videos.length} ${generation} video`);
     const path = copyPathOf(discsDirectory, generation, asset);
     if (reuse && fileSizeOf(path) === asset.sourceSize) {
@@ -48,7 +59,9 @@ export async function writeCopiedVideos<T extends CopyAsset>(
     } else {
       writeCopyFile(path, await readAsset(asset));
     }
-    written.set(key, { path, size: asset.sourceSize });
+    byKey.set(key, { path, size: asset.sourceSize });
   }
+  // 結果は、読んだ順ではなく元の並びで返す
+  const written = inKeyOrder(byKey, videos.map(([key]) => key));
   return { files: written, generation, reused };
 }

@@ -10,10 +10,22 @@ import {
   type LegacyOverlayFile,
   legacyOverlayFilesOfElf,
 } from "@csa/contents-file-table";
-import { elfDefinitionOf, fiveKeyOf } from "@csa/selection-definitions";
+import {
+  elfDefinitionOf,
+  fiveKeyOf,
+  PB_GENERATION,
+} from "@csa/selection-definitions";
 import { titleKeyOf } from "@csa/selection-manifest";
 import { songCatalog } from "@csa/selection-song-catalog";
 import { openSongDb, songmapOfGeneration } from "./song_db.ts";
+
+/** 原盤を読む素材世代。周回の前に`useGenerations`で決める。決める前は、すべての世代を読む */
+let readGenerations: ReadonlySet<string> | undefined;
+
+/** 原盤を読む素材世代を決める。全曲リストを引く前に呼ぶ */
+export const useGenerations = (generations: readonly string[]): void => {
+  readGenerations = new Set(generations);
+};
 
 export const {
   catalogCopiesOf,
@@ -22,8 +34,13 @@ export const {
   catalogRowsOf,
   catalogVariants,
   groupedCatalogs,
+  saveSlots,
+  useFrontChooser,
 } = songCatalog<Uint8Array>({
   fiveKeyOf,
+  isRead: (generation) =>
+    generation === PB_GENERATION ||
+    (readGenerations?.has(generation) ?? true),
   songsOf: (generation, elf) => openSongDb(generation, elf).songTitles(),
   titleKeyOf,
 });

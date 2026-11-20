@@ -27,7 +27,7 @@ export const SAVE_LAYOUT_ACTION = "apply_save_layout";
 /**
  * `saveCapacity`はセーブ側の曲容量。曲数以上で、shift列が`S`倍と`5S`倍を4命令で
  * 作れる値にする(`511 = 512-1`など)。
- * `references`はセーブ領域を触る命令の表で、`data/elf_patch/`のTSVから読む。
+ * `references`はセーブ領域を触る命令の表で、`data/elf_patch/`のCSVから読む。
  */
 export function buildSaveLayoutPatches(
   elf: MutableElf,

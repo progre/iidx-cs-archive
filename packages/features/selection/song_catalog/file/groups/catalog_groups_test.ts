@@ -2,7 +2,7 @@
 
 import { assertEquals, assertThrows } from "@std/assert";
 import { withGroupSubtitles } from "./catalog_groups.ts";
-import type { CatalogFront, CatalogRow } from "../tsv.ts";
+import type { CatalogFront, CatalogRow } from "../csv.ts";
 
 const row = (name: string, line: number, front?: CatalogFront) =>
   ({ line, name, songId: null, ...(front ? { front } : {}) }) as CatalogRow;

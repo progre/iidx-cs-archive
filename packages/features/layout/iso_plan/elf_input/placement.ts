@@ -33,13 +33,31 @@ export const elfPlacementOf = (plan: PlacementPlan) => ({
   })),
 });
 
-/** 空の`pairlessSongs`とPBムービーの付け替えは、キーごと省く */
+/** PBの固定枠の数。選曲リストの窓は、ここから`targetSongCount`の手前までである */
+const FIXED_SLOT_COUNT = 99;
+
+/**
+ * 選曲リストの窓のうち、曲を置かない曲index。
+ * 一部の原盤だけで作ると、欠けた原盤の曲の曲indexが空く
+ */
+export const vacantSlotsOf = (manifest: IndividualAssetManifest): number[] => {
+  const used = new Set(manifest.songs.map((song) => song.targetSongIndex));
+  return Array.from(
+    { length: manifest.targetSongCount - FIXED_SLOT_COUNT },
+    (_, at) => FIXED_SLOT_COUNT + at,
+  ).filter((index) => !used.has(index));
+};
+
+/** 空の`pairlessSongs`、PBムービーの付け替え、空いた曲indexは、キーごと省く */
 export const elfContentOf = <Song, Pairless>(
   manifest: IndividualAssetManifest,
   songs: Song[],
   pairlessSongs: Pairless[],
 ) => ({
   ...(pairlessSongs.length === 0 ? {} : { pairlessSongs }),
+  ...(vacantSlotsOf(manifest).length === 0
+    ? {}
+    : { vacantSlots: vacantSlotsOf(manifest) }),
   ...(manifest.pbVideoRedirects === undefined ? {} : {
     // CSAが置く資産へ向けた曲は、ここでその資産のABC indexを引く
     pbVideos: manifest.pbVideoRedirects.map((redirect) => ({

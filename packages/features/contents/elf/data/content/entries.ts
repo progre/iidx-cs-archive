@@ -2,6 +2,7 @@
  * 曲DBの枠へ収録内容を書く。
  * 裏エントリーの枠には複製元が無いので、差し替え元の枠を写してから素材の範囲を重ねる。
  * 写さない欄が未初期化のまま残るのを防ぐため、この順序は変えられない。
+ * 差し替え元は書き終えた枠を写すので、manifestの並びによらず、表の曲をすべて書いてから裏の曲を書く。
  */
 
 import type { MutableElf } from "../../elf/mod.ts";
@@ -11,14 +12,15 @@ import {
   applyFiveKeyFields,
   copiedFieldAddresses,
   fiveKeyRangesOf,
-  frontChartLevelAddresses,
-  verifyFrontCharts,
-  writeFrontCharts,
+  frontFillLevelAddresses,
+  verifyChartMoves,
+  writeChartMoves,
 } from "./copied/mod.ts";
 import {
   type CsaSongDb,
   entryAddressOf,
   layoutOf,
+  placeholderFieldsOf,
   VIDEO_FLAG_BITS,
   videoFlagsOffsetOf,
 } from "./song_db.ts";
@@ -68,7 +70,11 @@ export function writeSongEntries(
       ),
     ] as const
   );
-  for (const song of content.songs) {
+  const frontsFirst = [
+    ...content.songs.filter((song) => song.variantOf === undefined),
+    ...content.songs.filter((song) => song.variantOf !== undefined),
+  ];
+  for (const song of frontsFirst) {
     const target = entryAt(song.targetSongIndex);
     if (song.variantOf !== undefined) {
       elf.setBytes(
@@ -111,6 +117,12 @@ export function writeSongEntries(
       elf.setU32(target + fieldOffset, content.sharedVideoAbcIndex);
     }
   }
+  // 曲を置かない枠には複製した曲が残るので、譜面の無いplaceholderのエントリーにする
+  for (const index of content.vacantSlots ?? []) {
+    for (const { bytes, offset } of placeholderFieldsOf(songDb.format)) {
+      elf.setBytes(entryAt(index) + offset, new Uint8Array(bytes));
+    }
+  }
   for (const [back, entry] of pbOriginals) {
     if (!songOf.has(back.songId)) {
       throw new Error(`PB原盤のsong${back.songId}の枠に表の曲が無い`);
@@ -130,7 +142,7 @@ export function writeSongEntries(
     elf.setBytes(entryAt(pbLevel.songIndex) + pb.levels, pbLevel.levels);
   }
   // PB原盤の曲のレベル欄を書いた後でないと、表の曲へ写したレベルが消える
-  writeFrontCharts(elf, songDb, content);
+  writeChartMoves(elf, songDb, content);
 }
 
 /** 曲DBの資産参照欄が新しいABC indexを指しているかを見る。 */
@@ -169,7 +181,7 @@ export function verifySongEntries(
       throw new Error(`PBのsong${pbVideo.songIndex}のムービー欄が読み戻せない`);
     }
   }
-  const copied = frontChartLevelAddresses(songDb, content);
+  const copied = frontFillLevelAddresses(songDb, content);
   for (const pbLevel of content.pbLevels ?? []) {
     const target = entryAddressOf(songDb, pbLevel.songIndex) + pb.levels;
     const actual = elf.slice(target, pbLevel.levels.length);
@@ -180,5 +192,5 @@ export function verifySongEntries(
       throw new Error(`PBのsong${pbLevel.songIndex}のレベル欄が読み戻せない`);
     }
   }
-  verifyFrontCharts(elf, songDb, content);
+  verifyChartMoves(elf, songDb, content);
 }

@@ -17,13 +17,12 @@ const listed = {
   note: null,
 } as unknown as CatalogRow;
 
-Deno.test("裏の組は、全曲リストの行が書いた条件のまま使う", () => {
-  const variant = { generation: "pb", rule: "alternate", songId: 7 } as const;
-  assertEquals(
-    listingOf(ports, "dd", 96, listed, undefined, variant)?.variant,
-    variant,
-  );
-  assertEquals(listingOf(ports, "dd", 96, listed)?.variant, null);
+Deno.test("chart_movesは、表か裏かを決める前は表の曲の中で移す譜面として読む", () => {
+  const charted = {
+    ...listed,
+    front: { chartMoves: { sl: "sa" } },
+  } as CatalogRow;
+  assertEquals(listingOf(ports, "dd", 96, charted)?.chartMoves, { sl: "sa" });
 });
 
 Deno.test("原作の5鍵盤版の組は、原盤の定義から足す", () => {

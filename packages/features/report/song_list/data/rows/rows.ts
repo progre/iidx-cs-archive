@@ -18,11 +18,12 @@ import {
   chartsOf,
   folderFieldsOf,
   folderTextOf,
-  type FrontChart,
+  type FrontFill,
   hasNotes,
   overlayOf,
   type SortedRow,
-  withFrontCharts,
+  splitMoves,
+  withFrontFills,
   withLinkedCharts,
   withMovedCharts,
 } from "./row_fields.ts";
@@ -45,8 +46,8 @@ function ownChartsOf(song: AddedSong): SongRow["charts"] {
   );
 }
 
-/** 裏の曲の`front_charts`を、表の曲の枠で引けるようにする。裏の番号の順に並べる */
-function frontChartsOf(songs: readonly AddedSong[]): FrontChart[] {
+/** 裏の曲の、表の曲にも写す組を、表の曲の枠で引けるようにする。裏の番号の順に並べる */
+function frontFillsOf(songs: readonly AddedSong[]): FrontFill[] {
   return songs
     .toSorted((a, b) =>
       (a.variantOf?.position ?? 0) - (b.variantOf?.position ?? 0)
@@ -54,7 +55,7 @@ function frontChartsOf(songs: readonly AddedSong[]): FrontChart[] {
     .flatMap((song) => {
       const variant = song.variantOf;
       const charts = ownChartsOf(song);
-      return Object.entries(variant?.frontCharts ?? {}).flatMap(
+      return splitMoves(variant).fills.flatMap(
         ([name, from]) => {
           const chart = charts[from];
           return chart === undefined || variant === undefined ? [] : [{
@@ -99,10 +100,11 @@ export function songRowsOf(
     const shared = song.sharedWith === undefined
       ? undefined
       : pbOf.get(song.sharedWith.targetSongIndex);
-    // 表の曲の行に書いた組(`movedCharts`)は、表の曲の中で移す
+    // 裏の曲は裏の中で移すだけの組を、表の曲は表の曲の行に書いた組(`chartMoves`)を、曲の中で移す
+    const { fills, moves } = splitMoves(song.variantOf);
     const { charts, movedIn } = withMovedCharts(
       ownChartsOf(song),
-      song.variantOf?.movedCharts ?? song.movedCharts,
+      moves.length > 0 ? Object.fromEntries(moves) : song.chartMoves,
     );
     return {
       row: {
@@ -117,7 +119,7 @@ export function songRowsOf(
         // 表の曲へ写した譜面は、表の曲の難易度で演奏する
         charts: withLinkedCharts(
           charts,
-          Object.values(song.variantOf?.frontCharts ?? {}),
+          fills.map(([, from]) => from),
         ),
         ...(movedIn === undefined ? {} : { movedIn }),
         ...folderFieldsOf(ports.folderShort, shown.folder, shown),
@@ -168,13 +170,13 @@ export function songRowsOf(
     manifest.songs,
   );
   const ordered = withFrontsFirst(
-    withFrontCharts([
+    withFrontFills([
       ...pbRows.rows,
       ...added,
       ...excluded.map((song) =>
         excludedRowOf(ports, song, sharedAbcIndex, bytesOf)
       ),
-    ], [...frontChartsOf(manifest.songs), ...pbRows.frontCharts]).sort((a, b) =>
+    ], [...frontFillsOf(manifest.songs), ...pbRows.frontFills]).sort((a, b) =>
       compare(a.sortKey, b.sortKey) ||
       compare(a.row.key, b.row.key) ||
       compare(a.row.generation, b.row.generation)

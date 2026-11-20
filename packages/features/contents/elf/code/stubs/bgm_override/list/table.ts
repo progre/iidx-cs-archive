@@ -32,7 +32,7 @@ export interface ListRow {
   /** 裏の曲index。`position`の順に並ぶ */
   backs: number[];
   /**
-   * 表の曲が持たず、裏の曲で出す難易度(`front_charts`)の印。
+   * 表の曲が持たず、裏の曲で出す難易度(`chart_moves`)の印。
    * ビット`style*5 + rank`が立っていれば、その難易度では必ず裏を選ぶ
    */
   forced: number;
@@ -68,7 +68,7 @@ export function listRows(content: SongContent): ListRow[] {
     targetSongIndex: back.targetSongIndex,
     variantOf: {
       ...(back.forcedBack ? { forcedBack: back.forcedBack } : {}),
-      ...(back.frontCharts ? { frontCharts: back.frontCharts } : {}),
+      ...(back.frontFills ? { frontFills: back.frontFills } : {}),
       position: back.position,
       rule: "custom" as const,
       targetSongIndex: back.songId,
@@ -91,7 +91,7 @@ export function listRows(content: SongContent): ListRow[] {
       );
     }
     row.backs[position] = song.targetSongIndex;
-    row.forced = Object.keys(variant.frontCharts ?? {})
+    row.forced = (variant.frontFills ?? [])
       .reduce((bits, name) => bits | (1 << levelIndexOf(name)), row.forced);
     rows.set(variant.targetSongIndex, row);
   }

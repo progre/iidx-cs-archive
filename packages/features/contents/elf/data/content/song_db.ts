@@ -58,3 +58,23 @@ export const VIDEO_FLAG_BITS = 0x03;
 /** ムービーの映し方の印(u8) */
 export const videoFlagsOffsetOf = (format: EntryFormat): number =>
   required(layoutOf(format).video.unkPb62Offset, "ムービーの映し方の印");
+
+/** ノーツ数の欄1つのバイト数 */
+const NOTES_FIELD_BYTES = 2;
+
+/**
+ * 譜面の無いplaceholderのエントリーにするために0にする欄。レベルとノーツ数である。
+ * dd の曲番号31(管理名`S`)と同じく、エントリーはあっても譜面の無い曲になり、選曲リストに出ない
+ */
+export function placeholderFieldsOf(
+  format: EntryFormat,
+): { bytes: number; offset: number }[] {
+  const { levels } = layoutOf(format).selection;
+  const { notes } = layoutOf(format).chart;
+  return [
+    { bytes: levels.count, offset: levels.offset },
+    ...(notes === null
+      ? []
+      : [{ bytes: notes.count * NOTES_FIELD_BYTES, offset: notes.offset }]),
+  ];
+}

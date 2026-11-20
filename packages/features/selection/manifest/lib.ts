@@ -1,7 +1,6 @@
 // 原盤から読んだ曲を、CSA の曲の記録(manifest)へ組む規則。
 // 原盤の読み方と、ファイルを読む手段は、app から渡す。
 export {
-  loadVideoAdoptions,
   makeManifest,
   type ManifestBuildPorts,
   type ManifestLaps,
@@ -12,7 +11,6 @@ export type {
   AliasAdoption,
   SongId,
   VideoAdoption,
-  VideoAdoptionRow,
 } from "./build/adoption/mod.ts";
 export {
   adoptionsOf,
@@ -60,9 +58,13 @@ export {
 } from "./candidates/mod.ts";
 export {
   draftedLapRows,
+  type FrontMaterial,
+  type FrontRulePorts,
   type LapRows,
   lapRowsOf,
   type LapRowsPorts,
+  movieKeyOf,
+  ruleFrontChooser,
   withOtherGenerationRows,
 } from "./candidates/lap/mod.ts";
 export {
@@ -119,16 +121,13 @@ export {
 export {
   anotherSwitchesOf,
   assertNoPbExclusion,
-  assertVariantsBuilt,
-  fiveKeysOf,
   type LapPbBack,
   type ListingPorts,
   listingsOf,
   pbBacksOf,
   pbSlotFilter,
   sharesOf,
-  variantsOf,
-  withOtherGenerationFiveKeys,
-  withOtherGenerationFronts,
+  withCatalogFiveKeys,
+  withCatalogVariants,
   withPbSlotFronts,
 } from "./candidates/catalog/mod.ts";

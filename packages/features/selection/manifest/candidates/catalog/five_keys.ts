@@ -1,75 +1,44 @@
-// 全曲リストに書いた5鍵盤版の組を、世代の行の5鍵盤版に結ぶ。
-// 原作の組は、原盤の定義(`fiveKeyOf`)にある。
+// 全曲リストに書いた5鍵盤版の組を、すべての世代を読み終えた後に、世代の行の5鍵盤版に結ぶ。
+// 原作の組は、原盤の定義(`fiveKeyOf`)にあり、周回の中で結ぶ。
 
-import type {
-  CatalogFiveKey,
-  CatalogRow,
-  FiveKeyFront,
-  ManifestSongDraft,
-} from "@csa/core";
-import { songIdOf } from "./variants.ts";
+import type { CatalogFiveKey, CatalogRow, ManifestSongDraft } from "@csa/core";
+import { includedSongIdOf, rowAtLine } from "./variants.ts";
 
 const whereOf = ({ generation, line }: CatalogFiveKey) =>
   `${generation}の全曲リスト line ${line}`;
 
-const isOtherGeneration = (pair: CatalogFiveKey) =>
-  pair.frontGeneration !== pair.generation;
-
-/** 表の曲が別の世代なら、その世代を読み終えるまで song_id が分からないので、行番号から仮の値を作る */
-const pendingFrontOf = (pair: CatalogFiveKey) => -pair.line;
-
-/** 5鍵盤版の曲の曲番号 → 表の曲 */
-export function fiveKeysOf(
-  generation: string,
-  rows: ReadonlyMap<number, CatalogRow>,
-  pairs: readonly CatalogFiveKey[],
-): Map<number, FiveKeyFront> {
-  return new Map(
-    pairs.filter((pair) => pair.generation === generation).map((pair) => {
-      const where = whereOf(pair);
-      const front: FiveKeyFront = isOtherGeneration(pair)
-        ? {
-          generation: pair.frontGeneration,
-          ownLevels: true,
-          songId: pendingFrontOf(pair),
-        }
-        : { ownLevels: true, songId: songIdOf(rows, pair.frontTitle, where) };
-      return [songIdOf(rows, pair.title, where), front];
-    }),
-  );
-}
-
-/** すべての世代を読み終えた後に、別の世代の表の曲の song_id を書く */
-export function withOtherGenerationFiveKeys(
+/** 5鍵盤版の曲の行に、表の曲を書く。全曲リストで書いた組の5鍵盤版は、自分のレベルを使う */
+export function withCatalogFiveKeys(
   rowsOf: ReadonlyMap<string, readonly ManifestSongDraft[]>,
   catalogRows: ReadonlyMap<string, ReadonlyMap<number, CatalogRow>>,
   pairs: readonly CatalogFiveKey[],
 ): Map<string, ManifestSongDraft[]> {
   const result = new Map([...rowsOf].map(([gen, rows]) => [gen, [...rows]]));
-  for (const pair of pairs.filter(isOtherGeneration)) {
+  for (const pair of pairs) {
     const where = whereOf(pair);
-    const frontRows = catalogRows.get(pair.frontGeneration);
-    const front = songIdOf(frontRows, pair.frontTitle, where);
-    if (frontRows?.get(front)?.exclude) {
-      throw new Error(
-        `${where}: ${pair.frontGeneration}の全曲リストで${pair.frontTitle}を外している`,
-      );
-    }
-    const rows = result.get(pair.generation) ?? [];
-    const at = rows.findIndex((row) =>
-      row.fiveKeyOf?.songId === pendingFrontOf(pair)
-    );
-    if (at < 0) {
-      throw new Error(`${where}: 5鍵盤版の曲が行に無い`);
+    const { frontGeneration, generation } = pair;
+    const rows = result.get(generation) ?? [];
+    const at = rowAtLine(rows, pair.line, where);
+    // 原作の組を、全曲リストの組より優先する
+    if (rows[at].fiveKeyOf !== undefined) {
+      continue;
     }
     rows[at] = {
       ...rows[at],
       fiveKeyOf: {
-        generation: pair.frontGeneration,
+        ...(frontGeneration === generation
+          ? {}
+          : { generation: frontGeneration }),
         ownLevels: true,
-        songId: front,
+        songId: includedSongIdOf(
+          catalogRows.get(frontGeneration),
+          frontGeneration,
+          pair.frontTitle,
+          where,
+        ),
       },
     };
+    result.set(generation, rows);
   }
   return result;
 }

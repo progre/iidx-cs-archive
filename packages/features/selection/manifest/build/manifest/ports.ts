@@ -12,7 +12,6 @@ import type { LapPbBack } from "../../candidates/catalog/mod.ts";
 import type { IndexDoc, IndexTitleOf } from "../../index/mod.ts";
 import type { AdoptionPorts } from "../adoption/mod.ts";
 import type { ByteReader, FolderRules, VersionTables } from "../folder/mod.ts";
-import type { adoptionsOf } from "../video_adoption/mod.ts";
 
 /** 周回で読んだ、曲ごとの作品番号と新旧の印と、ムービーの印 */
 export interface LapSongBytes {
@@ -48,6 +47,8 @@ export interface ManifestBuildPorts<Elf, Excluded> {
   ) => CatalogRow | undefined;
   catalogRowsOf: (generation: string, elf: Elf) => Map<number, CatalogRow>;
   chartSlots: readonly string[];
+  /** CSAがその世代のムービーを変換するか */
+  convertsVideo: (generation: string) => boolean;
   excludedSongs: (
     songs: readonly ManifestSongDraft[],
     catalogRows: ReadonlyMap<string, Map<number, CatalogRow>>,
@@ -77,9 +78,21 @@ export interface ManifestBuildPorts<Elf, Excluded> {
   ) => [name: string, level: number][];
   /** 曲DBエントリーの、難易度のレベル欄の値 */
   levelOf: (entry: string, name: string) => number;
-  moviePicks: () => Parameters<typeof adoptionsOf>[1];
+  /** `世代:番号` → ムービーの別名。並びは表の行の順である */
+  movieAliases: () => ReadonlyMap<string, string>;
   /** PBの世代ID */
   pbGeneration: string;
+  /**
+   * 組のセーブの曲index。全世代の全曲リストから決めるので、原盤が欠けても変わらない。
+   * `count`は99以降の曲indexの数。`indexOf`は世代と全曲リストの行番号から引き、
+   * オーナーがPBの組の行には`undefined`を返す
+   */
+  saveSlots: {
+    count: number;
+    indexOf: (generation: string, line: number) => number | undefined;
+  };
+  /** ムービーを変換する世代の中で、同じ映像のムービーから優先して採る世代 */
+  preferredConvertedVideoGeneration: string;
   sourceManifestOf: (generation: string) => ManifestSource;
   tables: VersionTables;
   /** 曲DBエントリーの曲名 */

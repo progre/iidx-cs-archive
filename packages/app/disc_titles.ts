@@ -17,6 +17,6 @@ export const DISC_TITLES: Readonly<Record<string, string>> = {
   gold: "14: GOLD",
   djt: "15: DJ TROOPERS",
   us: "USA Version",
-  emp: "16: Empress Disc",
-  pb: "16: Premium Best disc",
+  emp: "16: EMPRESS",
+  pb: "PREMIUM BEST",
 };

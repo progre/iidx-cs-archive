@@ -81,7 +81,7 @@ Deno.test("曲DBの曲数は、収録する曲数に99を足した数である�
   assertEquals(targetSongCountOf(5), 104);
 });
 
-Deno.test("1世代の並びは、再生できる表の曲、できない表の曲、裏エントリーの順になる", () => {
+Deno.test("1世代の並びは、表か裏かによらず曲番号の順で、外した曲を除く", () => {
   const rows = [
     song("9th", 4, { variantOf: { rule: "random8", songId: 1 } }),
     song("9th", 3),
@@ -89,12 +89,11 @@ Deno.test("1世代の並びは、再生できる表の曲、できない表の�
     song("9th", 1),
     song("9th", 5),
   ];
-  const playable = (row: ManifestSongDraft) => row.sourceSongIndex !== 1;
-  assertEquals(keys(manifestOrderOfGeneration(rows, playable)), [
-    "9th/3",
-    "9th/5",
+  assertEquals(keys(manifestOrderOfGeneration(rows)), [
     "9th/1",
+    "9th/3",
     "9th/4",
+    "9th/5",
   ]);
 });
 

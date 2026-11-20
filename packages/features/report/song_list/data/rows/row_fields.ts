@@ -62,6 +62,21 @@ export const chartsOf = (
   );
 
 /** `names`の難易度の譜面に、ほかの欄へ移した印を付ける */
+/** 裏の曲の`chartMoves`のうち、表の曲にも写す組(`frontFills`)と、裏の中で移すだけの組 */
+export function splitMoves(
+  variant:
+    | { chartMoves?: Record<string, string>; frontFills?: string[] }
+    | undefined,
+): { fills: [string, string][]; moves: [string, string][] } {
+  const pairs = Object.entries(variant?.chartMoves ?? {});
+  const isFill = ([to]: [string, string]) =>
+    variant?.frontFills?.includes(to) === true;
+  return {
+    fills: pairs.filter(isFill),
+    moves: pairs.filter((pair) => !isFill(pair)),
+  };
+}
+
 export function withLinkedCharts(
   charts: SongRow["charts"],
   names: readonly string[],
@@ -87,7 +102,7 @@ export function movedInWith(
 }
 
 /**
- * 裏の曲の中で移した譜面(`movedCharts`)を、移し先の難易度の欄へ入れる。
+ * 曲の中で移した譜面(`chartMoves`)を、移し先の難易度の欄へ入れる。
  * 移し元の譜面には移した印を付ける。移し先が自前で持つ譜面は、そのまま残す
  */
 export function withMovedCharts(
@@ -107,8 +122,8 @@ export function withMovedCharts(
   };
 }
 
-/** 表の曲が持たず、裏の曲で出す譜面(`front_charts`)。`saveIndex`は表の曲の枠 */
-export interface FrontChart {
+/** 表の曲が持たず、裏の曲で出す譜面(`chart_moves`)。`saveIndex`は表の曲の枠 */
+export interface FrontFill {
   chart: MovedInChart;
   /** 表の曲の難易度名 */
   name: string;
@@ -118,9 +133,9 @@ export interface FrontChart {
 /**
  * 表の曲の行に、裏の曲で出す譜面を足す。実機の曲DBでも、裏の曲の欄を表の曲へ写してある
  */
-export function withFrontCharts(
+export function withFrontFills(
   rows: readonly SortedRow[],
-  fronts: readonly FrontChart[],
+  fronts: readonly FrontFill[],
 ): SortedRow[] {
   const bySaveIndex = Map.groupBy(fronts, (front) => front.saveIndex);
   return rows.map((sorted) => {

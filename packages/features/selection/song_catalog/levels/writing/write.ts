@@ -1,13 +1,20 @@
-// 全曲リストのTSVの文字列へ、難易度を書き込む。書く譜面の列だけを変え、
-// ほかの列と行の列数は変えない。行末で省いた列は、書く分だけ空で補う。
-// 値がnullの譜面は、列を空にする。
+// 全曲リストのCSVの文字列へ、難易度を書き込む。書く譜面の列だけを変え、
+// ほかの列と行の列数は変えない。値がnullの譜面は、列を空にする。
 
+import { parse } from "@std/csv";
 import { type Chart, CHARTS, LEVEL_COLUMN_START } from "../../file/mod.ts";
 
 /** 譜面ごとに書く難易度。nullは、その譜面の難易度を消す */
 export type LevelWrites = Partial<Record<Chart, number | null>>;
 
 const SONG_ID_SUFFIX = /:(\d+)$/;
+
+/** CSVの1行を値に分ける。値に改行は書かないので、1行だけを読めばよい */
+const cellsOf = (line: string): string[] => parse(line).at(0) ?? [];
+
+/** `,`や`"`を含む値だけを`"`で囲む */
+const quoted = (cell: string): string =>
+  /[",\n\r]/.test(cell) ? `"${cell.replaceAll('"', '""')}"` : cell;
 
 /** 行の`title`列を、`songKey`と同じ形のキーにする */
 function keyOf(title: string): string {
@@ -21,7 +28,7 @@ function keyOf(title: string): string {
 export function catalogKeys(text: string): Set<string> {
   return new Set(
     text.split("\n").slice(1).filter((line) => line !== "")
-      .map((line) => keyOf(line.split("\t")[0])),
+      .map((line) => keyOf(cellsOf(line)[0] ?? "")),
   );
 }
 
@@ -29,18 +36,15 @@ function withLevels(
   line: string,
   levels: LevelWrites,
 ): { line: string; changed: number } {
-  const cells = line.split("\t");
+  const cells = cellsOf(line);
   const changed = Object.entries(levels).filter(([chart, level]) => {
     const column = LEVEL_COLUMN_START + CHARTS.indexOf(chart as Chart);
-    while (cells.length <= column) {
-      cells.push("");
-    }
     const before = cells.at(column);
     const after = level == null ? "" : String(level);
     cells.splice(column, 1, after);
     return before !== after;
   }).length;
-  return { line: cells.join("\t"), changed };
+  return { line: cells.map(quoted).join(","), changed };
 }
 
 /**
@@ -54,7 +58,7 @@ export function applyLevels(
   let changed = 0;
   const written = new Set<string>();
   const lines = text.split("\n").map((line, index) => {
-    const key = keyOf(line.split("\t")[0]);
+    const key = keyOf(cellsOf(line)[0] ?? "");
     const found = index === 0 ? undefined : levels.get(key);
     if (found == null) {
       return line;

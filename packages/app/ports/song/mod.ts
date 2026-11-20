@@ -8,7 +8,12 @@ export {
   PB_ENTRY,
   songmapOfGeneration,
 } from "./song_db.ts";
-export { measureLap, readPbSongs, writeSongListFiles } from "./song_list.ts";
+export {
+  measureLap,
+  readPbSongs,
+  soundLengthOfBytes,
+  writeSongListFiles,
+} from "./song_list.ts";
 export {
   catalogFiveKeys,
   catalogRowAt,
@@ -17,4 +22,6 @@ export {
   groupedCatalogs,
   openGeneration,
   openLegacyOverlay,
+  useFrontChooser,
+  useGenerations,
 } from "./sources.ts";

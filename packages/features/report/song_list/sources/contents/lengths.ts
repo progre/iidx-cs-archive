@@ -11,7 +11,9 @@
 import {
   assetGenerationOf,
   type ExcludedSong,
+  inDiscOrder,
   type IndividualAssetManifest,
+  inKeyOrder,
   type ManifestAsset,
   type ManifestSong,
   parseGeneratedSource,
@@ -156,13 +158,20 @@ export async function contentLengthsOf(
   ]);
   const pbIndices = new Set([...pbVideos, ...pbSoundIndices(pbSongmap)]);
   const fileOf = new Map(pbSongmap.files.map((file) => [file.index, file]));
-  for (const index of pbIndices) {
-    const file = fileOf.get(index);
-    const archive = file && pbDisc.info.files.get(archiveKey(file.archive));
-    if (file === undefined || archive === undefined) {
-      throw new Error(`PBのファイル一覧にABC index ${index}が無い`);
-    }
-    const start = archive.lba * SEC + file.offset;
+  const pbFiles = inDiscOrder(
+    [...pbIndices].map((index) => {
+      const file = fileOf.get(index);
+      const archive = file && pbDisc.info.files.get(archiveKey(file.archive));
+      if (file === undefined || archive === undefined) {
+        throw new Error(`PBのファイル一覧にABC index ${index}が無い`);
+      }
+      return { file, index, start: archive.lba * SEC + file.offset };
+    }),
+    ({ start }) => start,
+  );
+  const lengthKeys = [...contents.lengths.keys()];
+  const printKeys = [...contents.prints.keys()];
+  for (const { file, index, start } of pbFiles) {
     const read = (offset: number, length: number) =>
       pbDisc.readAt(start + offset, length);
     // PBの原盤は変わらないので、キーは原盤の中の場所と大きさだけで決まる
@@ -177,5 +186,10 @@ export async function contentLengthsOf(
       )
       : measure(ports, contents, `pb:${index}`, file.size, read));
   }
-  return contents;
+  // 曲リストは表の並びのまま書くので、読んだ順ではなく元の順に戻す
+  const pbSources = [...pbIndices].map((index) => `pb:${index}`);
+  return {
+    lengths: inKeyOrder(contents.lengths, [...lengthKeys, ...pbSources]),
+    prints: inKeyOrder(contents.prints, [...printKeys, ...pbSources]),
+  };
 }

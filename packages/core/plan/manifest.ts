@@ -69,14 +69,16 @@ export interface ManifestVariant {
    * 印の無い表の曲では、その難易度を持つ候補の先頭の裏が鳴る
    */
   forcedBack?: true;
-  /** `custom`で、表の曲が持たない難易度 → それを出す裏の曲の難易度。`sp_black`の形 */
-  frontCharts?: Record<string, string>;
   /**
-   * `custom`で、移し先の難易度 → 移し元の難易度。どちらも裏の曲の難易度で、`sp_black`の形。
-   * 移し先は、表の曲が持つ難易度である。
-   * 全曲リストの`front_charts`のうち、表の曲が左の難易度を持つ組である
+   * `custom`で、裏の曲の中で譜面を移す組。移し先の難易度 → 移し元の難易度で、`sp_black`の形。
+   * 全曲リストの`chart_moves`と、表の曲が持たない難易度を埋めるためにビルドが足す組である
    */
-  movedCharts?: Record<string, string>;
+  chartMoves?: Record<string, string>;
+  /**
+   * `chartMoves`の移し先のうち、表の曲が持たない難易度。
+   * この組は、移し元を空にせず、移した譜面を表の曲へも写す
+   */
+  frontFills?: string[];
   /** `custom`で、同じ表の曲の裏の中での番号。古い世代から順に0から振り、usは最後にする */
   position?: number;
   rule: SwitchRule;
@@ -97,7 +99,7 @@ export interface ManifestUncorrected {
   /** 全曲リストの`folder`列が無ければ規則が決める作品番号。規則で決まらなければ`null` */
   version?: number | null;
   /**
-   * 原作のムービー。共有BGAへ向けた曲と、`video_adoptions.csv`でムービーを差し替えた曲だけが持つ。
+   * 原作のムービー。共有BGAへ向けた曲と、同じ映像の1本へムービーを差し替えた曲だけが持つ。
    * `sourceFileIndex`はその世代のsongmapの通し番号
    */
   videos?: { sourceFileIndex: number; sourceGeneration: string }[];
@@ -108,8 +110,8 @@ export interface ManifestSong {
   canonicalKey: string;
   /** 全曲リストでこの曲を書いた行の番号。同じ曲を2行に書いた曲では、行ごとに違う */
   catalogLine?: number;
-  /** 表の曲の中で譜面を移す組。移し先 → 移し元の難易度名。全曲リストの表の曲の行の`front_charts` */
-  movedCharts?: Record<string, string>;
+  /** 表の曲の中で譜面を移す組。移し先 → 移し元の難易度名。全曲リストの表の曲の行の`chart_moves` */
+  chartMoves?: Record<string, string>;
   /**
    * PB形式の曲DBエントリ(0x134バイト、base64)。参照欄は配置器が新indexへ置き換える。
    * `excludedCharts`の譜面も、レベルとノーツ数を残す

@@ -5,34 +5,41 @@ export type { CatalogFiveKey, CatalogVariant };
 import { difficultyNamesOf } from "../../levels/mod.ts";
 import {
   catalogGroupsOf,
+  type FrontChooser,
   type GenerationCatalog,
   type GroupRow,
   type IsFiveKeyTwin,
   orderOf,
+  ownerAsFront,
   type SongKeyOf,
   titleOf,
 } from "./catalog_groups.ts";
-import type { Chart } from "../tsv.ts";
+import type { Chart } from "../csv.ts";
 
-export type { GenerationCatalog, IsFiveKeyTwin, SongKeyOf };
+export type { FrontChooser, GenerationCatalog, IsFiveKeyTwin, SongKeyOf };
 
 /** 同じ表の曲に付けられる裏の数。演奏を始めるとき、SELECT と一緒に上下と L1・R1 を押して選ぶ */
 const MAX_BACKS = 8;
 
-const frontChartsOf = (charts: Partial<Record<Chart, Chart>>) =>
+/** 全曲リストの譜面の列名の組を、難易度名(`sp_black`の形)の組にする */
+const chartMovesOf = (moves: Partial<Record<Chart, Chart>>) =>
   Object.fromEntries(
-    Object.entries(charts).map(([front, back]) =>
-      difficultyNamesOf([front as Chart, back as Chart])
+    Object.entries(moves).map(([to, from]) =>
+      difficultyNamesOf([to as Chart, from as Chart])
     ),
   );
 
 const isFiveKeys = ({ row }: GroupRow) => row.front?.fiveKeys === true;
 
-/** 同じ表の曲の裏は、古い世代から順に番号を振り、us は最後にする */
+/**
+ * 同じ表の曲の裏は、古い世代から順に番号を振り、us は最後にする。
+ * `owner`は組のセーブの枠の持ち主で、裏になったら印を付ける
+ */
 function variantsTo(
   catalogs: readonly GenerationCatalog[],
   front: GroupRow,
   backs: readonly GroupRow[],
+  owner?: GroupRow,
 ): CatalogVariant[] {
   const last = catalogs.length;
   const order = (generation: string) =>
@@ -49,15 +56,18 @@ function variantsTo(
   }
   return sorted.map((back) => {
     const { generation, row } = back;
-    const { charts, rule } = row.front ?? {};
+    const { chartMoves, rule } = row.front ?? {};
     return {
-      ...(charts === undefined ? {} : { frontCharts: frontChartsOf(charts) }),
+      ...(chartMoves === undefined
+        ? {}
+        : { chartMoves: chartMovesOf(chartMoves) }),
       frontGeneration: front.generation,
       frontLine: front.row.line,
       frontTitle,
       generation,
       line: row.line,
       ...(rule === undefined ? { position: chosen.indexOf(back) } : { rule }),
+      ...(back === owner ? { slotOwner: true as const } : {}),
       title: titleOf(row),
     };
   });
@@ -71,11 +81,17 @@ export function catalogVariantsOf(
   catalogs: readonly GenerationCatalog[],
   keyOf: SongKeyOf,
   isTwin: IsFiveKeyTwin,
+  chooseFront: FrontChooser = ownerAsFront,
 ): CatalogVariant[] {
-  return catalogGroupsOf(catalogs, keyOf, isTwin).flatMap((
-    { front, others, twin },
+  return catalogGroupsOf(catalogs, keyOf, isTwin, chooseFront).flatMap((
+    { front, others, owner, twin },
   ) => [
-    ...variantsTo(catalogs, front, others.filter((r) => !isFiveKeys(r))),
+    ...variantsTo(
+      catalogs,
+      front,
+      others.filter((r) => !isFiveKeys(r)),
+      owner,
+    ),
     ...(twin === undefined
       ? []
       : variantsTo(catalogs, twin, others.filter(isFiveKeys))),
@@ -87,8 +103,9 @@ export function catalogFiveKeysOf(
   catalogs: readonly GenerationCatalog[],
   keyOf: SongKeyOf,
   isTwin: IsFiveKeyTwin,
+  chooseFront: FrontChooser = ownerAsFront,
 ): CatalogFiveKey[] {
-  return catalogGroupsOf(catalogs, keyOf, isTwin).flatMap(
+  return catalogGroupsOf(catalogs, keyOf, isTwin, chooseFront).flatMap(
     ({ front, others, twin }) => {
       const fiveKeys = twin === undefined ? others.filter(isFiveKeys) : [];
       if (fiveKeys.length > 1) {
@@ -97,11 +114,11 @@ export function catalogFiveKeysOf(
         );
       }
       // 表の5鍵盤版は自分の譜面だけを出すので、ほかの難易度へ移せない
-      const charted = fiveKeys.find(({ row }) => row.front?.charts);
+      const charted = fiveKeys.find(({ row }) => row.front?.chartMoves);
       if (charted !== undefined) {
         throw new Error(
           `${charted.generation}の全曲リスト line ${charted.row.line}: ` +
-            "原作の5鍵盤版が無い組の5鍵盤版に、front_chartsを書いている",
+            "原作の5鍵盤版が無い組の5鍵盤版に、chart_movesを書いている",
         );
       }
       return fiveKeys.map(({ generation, row }) => ({

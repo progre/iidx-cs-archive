@@ -19,6 +19,7 @@ import type { ExcludedSong, ManifestSongDraft, SongmapDoc } from "@csa/core";
 import {
   chartSlotsOf,
   type Era,
+  eraOf,
   fiveKeyOf,
   GENERATIONS,
   PB_GENERATION,
@@ -30,21 +31,21 @@ import {
   type ManifestBuildPorts,
 } from "@csa/selection-manifest";
 import {
+  catalogKeyOf,
   difficultyNamesOf,
   levelsByDifficulty,
   readAnotherSwitches,
-  readMoviePicks,
+  readMovieAliases,
   readSharedAssets,
 } from "@csa/selection-song-catalog";
 import type { Era1Job } from "@csa/selection-video-era1";
 import type { LapSongs } from "../../laps/mod.ts";
 import {
   catalogCopiesOf,
-  catalogFiveKeys,
   catalogRowAt,
   catalogRowsOf,
-  catalogVariants,
   groupedCatalogs,
+  saveSlots,
 } from "./sources.ts";
 import {
   excludedSongs,
@@ -65,6 +66,8 @@ const ports: ManifestBuildPorts<Uint8Array, ExcludedSong> = {
   catalogRowAt,
   catalogRowsOf,
   chartSlots: chartSlotsOf("pb"),
+  // 3rd〜8th(era1)のムービーは、CSAが240x240へ変換する
+  convertsVideo: (generation) => eraOf(generation) === "era1",
   excludedSongs,
   fallbackVideoAbcIndex: FALLBACK_VIDEO_ABC_INDEX,
   finishManifestSong,
@@ -73,8 +76,18 @@ const ports: ManifestBuildPorts<Uint8Array, ExcludedSong> = {
   isPlayable,
   levelOf: (entry, name) => levelOfEntry(PB_ENTRY, entry, name),
   levelsByDifficulty,
-  moviePicks: readMoviePicks,
+  movieAliases: readMovieAliases,
   pbGeneration: PB_GENERATION,
+  // 全曲リストを読むのは、manifest を作るときにする
+  saveSlots: {
+    get count() {
+      return saveSlots().count;
+    },
+    indexOf: (generation, line) =>
+      saveSlots().indexOf.get(catalogKeyOf(generation, 0, line)),
+  },
+  // 3rd〜8thで画面いっぱいの320x224のムービーを作ったのは6thだけで、変換しても画質が良い
+  preferredConvertedVideoGeneration: "6th",
   sourceManifestOf,
   tables: {
     folderVersion: versionOfFolderName,
@@ -103,9 +116,7 @@ export const lapRowsOf = (
     {
       anotherSwitchRows: readAnotherSwitches,
       catalogCopiesOf,
-      catalogFiveKeys,
       catalogRowsOf,
-      catalogVariants,
       difficultyNamesOf,
       fiveKeyOf,
       sharedAssetRows: readSharedAssets,

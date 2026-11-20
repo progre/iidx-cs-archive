@@ -6,6 +6,7 @@ import type {
   CatalogRow,
   ExcludedSong,
   FinishedManifest,
+  ManifestVariant,
   PbVersions,
   SoundPrint,
 } from "@csa/core";
@@ -67,6 +68,15 @@ export interface SongListSources {
   soundPrints: ReadonlyMap<string, SoundPrint>;
 }
 
+/** 裏の曲の中で移す組。表の曲にも写す組(`frontFills`)を先に並べる */
+const movesOf = (variant?: ManifestVariant): Record<string, string> => {
+  const pairs = Object.entries(variant?.chartMoves ?? {});
+  const fills = new Set(variant?.frontFills);
+  return Object.fromEntries(
+    pairs.toSorted(([a], [b]) => Number(fills.has(b)) - Number(fills.has(a))),
+  );
+};
+
 /** 曲リストに載る全部の曲。収録する曲、外した曲、PB原盤の曲である */
 function ownersOf(
   { excluded, index, manifest, pbSongs }: SongListSources,
@@ -77,10 +87,7 @@ function ownersOf(
       excludedCharts: song.excludedCharts,
       generation: song.sourceGeneration,
       key: song.canonicalKey,
-      moves: {
-        ...song.variantOf?.frontCharts,
-        ...song.variantOf?.movedCharts,
-      },
+      moves: movesOf(song.variantOf),
       songId: song.sourceSongIndex,
     })),
     ...excluded.map((song) => ({

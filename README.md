@@ -5,7 +5,8 @@ Makes one PS2 disc image with the songs of the PS2 IIDX series.
 ## Requirements
 
 - A disc drive
-- Discs from 3rd style to 16 Premium Best, and the USA version
+- 16 EMPRESS + PREMIUM BEST
+- Any of the other discs from 3rd style to 15 DJ TROOPERS, and the USA version
 - [FFmpeg](https://ffmpeg.org/)
 
 ## Usage
@@ -14,9 +15,13 @@ Makes one PS2 disc image with the songs of the PS2 IIDX series.
    [Releases](https://github.com/progre/iidx-cs-archive/releases).
 2. Unzip it.
 3. Run `iidx-cs-archive.exe` in the unzipped folder.
-4. Put in each disc when asked.
+4. Choose the discs you have.
+   Both discs of 16 EMPRESS + PREMIUM BEST are always used.
+5. Put in each disc when asked.
 
 You get `build/iidx-cs-archive.iso`.
+It has the songs of the discs you chose.
+A save works with images made from any set of discs.
 
 > [!IMPORTANT]
 > The image needs the extended RAM of [PCSX2](https://pcsx2.net/).

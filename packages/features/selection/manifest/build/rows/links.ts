@@ -4,9 +4,6 @@
 import type { ManifestSongDraft } from "@csa/core";
 import { fiveKeyKey, type Selection, songKey } from "./select.ts";
 
-/** PBの固定枠の数。追加曲の曲indexはここから始まる */
-const FIXED_SLOT_COUNT = 99;
-
 /** 表の曲の行。同じ曲を2行に書いた曲は2行とも表になることがあるので、曲番号と行番号で見分ける */
 const frontLineKey = (
   generation: string,
@@ -27,19 +24,27 @@ const isPbFront = (row: ManifestSongDraft) =>
   row.variantOf?.generation === "pb";
 
 /**
- * 載せる曲の順に曲indexを割り当て、組の相手の曲indexも埋める。
- * 選曲リストに出る曲は99から、裏エントリーは`targetSongCount`から割り当てる。
- * PB の枠を使う表の曲(`pbSlot`)は、その枠に置き、99からの連番に数えない。
+ * 曲indexを割り当て、組の相手の曲indexも埋める。
+ * 選曲リストに出る曲は、PB の枠を使う表の曲(`pbSlot`)ならその枠に、ほかは`slotOf`が返す組の曲indexに置く。
+ * `slotOf`は全曲リストから決まるので、原盤が欠けた曲の曲indexは空いたまま残る。
+ * 裏エントリーは`targetSongCount`から割り当てる。
  * 差し替え元の表が選ばれていない裏エントリーは、原作でも指されないので載せない。
  */
 export function plannedSongs(
   selection: Pick<Selection, "selected" | "variants">,
   targetSongCount: number,
+  slotOf: (row: ManifestSongDraft) => number | undefined,
 ): ManifestSongDraft[] {
   const { selected, variants } = selection;
-  const added = selected.filter((row) => row.pbSlot === undefined);
-  const indexOf = (row: ManifestSongDraft) =>
-    row.pbSlot ?? FIXED_SLOT_COUNT + added.indexOf(row);
+  const indexOf = (row: ManifestSongDraft): number => {
+    const index = row.pbSlot ?? slotOf(row);
+    if (index === undefined) {
+      throw new Error(
+        `${songKey(row)}@${row.catalogLine}の曲indexが全曲リストで決まらない`,
+      );
+    }
+    return index;
+  };
   const frontIndexOf = new Map(
     selected.map((row) => [songKey(row), indexOf(row)]),
   );

@@ -2,8 +2,8 @@ import type { ManifestSongDraft } from "@csa/core";
 // 全曲リストの収録の指定のうち、組が成り立たないものと、仕様を決めていないものを見つける。
 // 5鍵盤版と裏エントリーは、組になる同じ世代の曲を参照する。
 // 参照先を全曲リストで外したり書かなかったりすると、組が成り立たない。
-// 別の世代の曲を表にする組は、表の世代の全曲リストを`withOtherGenerationFronts`と
-// `withOtherGenerationFiveKeys`が調べる。
+// 別の世代の曲を表にする組は、表の世代の全曲リストを`withCatalogVariants`と
+// `withCatalogFiveKeys`が調べる。
 
 /** 同じ世代の組の相手のsong_id */
 const partnersOf = (row: ManifestSongDraft): number[] =>

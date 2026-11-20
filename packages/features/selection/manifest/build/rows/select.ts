@@ -39,25 +39,29 @@ function sortForPick(
   );
 }
 
+/** 曲番号の順。同じ曲を2行に書いた曲は、全曲リストの行番号の順にする */
+const bySongIndex = (a: ManifestSongDraft, b: ManifestSongDraft): number =>
+  a.sourceSongIndex - b.sourceSongIndex ||
+  (a.catalogLine ?? 0) - (b.catalogLine ?? 0);
+
 /**
- * 1世代の行を、manifestに載る順に並べる。表の曲が先で、裏エントリーは後ろに付く。
+ * 1世代の行を、manifestに載る順に並べる。表か裏かは周回の後に決まるので、並びに使わない。
  * 選外で載らない行があっても、載る行の並びはこの並びの部分列になる。
  */
-export function manifestOrderOfGeneration(
+export const manifestOrderOfGeneration = (
   rows: readonly ManifestSongDraft[],
-  isPlayable: (row: ManifestSongDraft) => boolean,
-): ManifestSongDraft[] {
-  const buildable = rows.filter((song) => song.excluded === undefined);
-  const generations = new Map(rows.map((row) => [row.sourceGeneration, 0]));
-  return [
-    ...sortForPick(
-      buildable.filter((song) => song.variantOf === undefined),
-      generations,
-      isPlayable,
-    ),
-    ...buildable.filter((song) => song.variantOf !== undefined),
-  ];
-}
+): ManifestSongDraft[] =>
+  rows.filter((song) => song.excluded === undefined).toSorted(bySongIndex);
+
+/** manifestの曲の並び。世代ごとに`manifestOrderOfGeneration`と同じ並びにする */
+export const manifestOrderOf = <T extends ManifestSongDraft>(
+  songs: readonly T[],
+  generations: readonly string[],
+): T[] =>
+  songs.toSorted((a, b) =>
+    generations.indexOf(a.sourceGeneration) -
+      generations.indexOf(b.sourceGeneration) || bySongIndex(a, b)
+  );
 
 export interface SelectionInput {
   /** 載せる行 */

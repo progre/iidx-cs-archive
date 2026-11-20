@@ -7,7 +7,29 @@ import type {
   SongmapSong,
 } from "@csa/core";
 import type { ConvertedFile } from "../../song/mod.ts";
-import type { SongId } from "./table.ts";
+
+export interface SongId {
+  generation: string;
+  songId: number;
+}
+
+/** 曲の`slot`本目のムービーを、`adopt`の`adoptSlot`本目のムービーに差し替える */
+export interface VideoAdoption {
+  song: SongId;
+  /** `song`の何本目のムービーを差し替えるか。曲DBの欄の順で数える */
+  slot: number;
+  /** 代わりにムービーを使う曲 */
+  adopt: SongId;
+  /** `adopt`の何本目のムービーを使うか */
+  adoptSlot: number;
+}
+
+/** 曲の`slot`本目のムービーを、別名の1本に差し替える。別名から採用元の曲を引くのは、ビルドが行う */
+export interface AliasAdoption {
+  song: SongId;
+  slot: number;
+  alias: string;
+}
 
 /** 採用したムービーを当てる処理が使う、他の feature の関数。実装は app が渡す */
 export interface AdoptionPorts {

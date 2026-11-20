@@ -2,7 +2,11 @@
 // PBのloaderが読む`+8`形式へ並べ替え、3rd〜8thはELFの4段表からPB形式へ組み直す。
 // 読み込み領域に収まらない`.if`は場面ごとに分ける。
 // どれも単体ファイルとして置き、manifestの参照をそのファイルへ差し替える。周回の中で呼ぶ。
-import { type DisplaySong, generatedSourceArchive } from "@csa/core";
+import {
+  type DisplaySong,
+  generatedSourceArchive,
+  isProgressStep,
+} from "@csa/core";
 import { overlayRepackRequests, withRepackedOverlay } from "../../repack.ts";
 import { rewriteOverlayPackages } from "../../split/mod.ts";
 import type {
@@ -48,7 +52,11 @@ async function repackOverlays<
       elfOf,
     );
     const songs: DisplaySong[] = [];
-    for (const song of legacy.manifest.songs) {
+    const total = legacy.manifest.songs.length;
+    for (const [count, song] of legacy.manifest.songs.entries()) {
+      if (isProgressStep(count + 1, total)) {
+        console.log(`${count + 1}/${total} ${lap.generation} overlay`);
+      }
       const requests = overlayRepackRequests(song, ports);
       if (requests === null) {
         songs.push(song);

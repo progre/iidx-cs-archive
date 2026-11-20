@@ -74,6 +74,8 @@ export interface GenerationLap {
 /** 周回の中で書き出す先 */
 export interface LapOptions extends LapOutputOptions {
   era1: Era1ConvertOptions;
+  /** 読む素材世代。PBは含めず、必ず読む */
+  generations: readonly string[];
   openDisc: DiscOpener;
 }
 
@@ -83,7 +85,7 @@ export type Era1ConvertOptions = Omit<Era1ConvertPlaces, "discsDirectory">;
 /** `elves`には、前の周回で読んだ世代の実行ファイルも入っている */
 export async function lapGeneration(
   generation: string,
-  { era1, openDisc, ...directories }: LapOptions,
+  { era1, generations: _, openDisc, ...directories }: LapOptions,
   bytes: LapSongBytes,
   elves: SourceElfStore,
 ): Promise<GenerationLap> {

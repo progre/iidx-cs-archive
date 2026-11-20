@@ -5,7 +5,6 @@ import {
   isProgressStep,
   type ManifestSongDraft,
   type SongmapSong,
-  type SongVariant,
   type SourceAsset,
 } from "@csa/core";
 import {
@@ -68,13 +67,11 @@ export interface Listing {
   line: number;
   /** 行に書いた難易度。同じ曲を2行に書いた曲では、行ごとに違う */
   levels: Readonly<Record<string, number>>;
-  /** 表の曲の行に書いた`front_charts`。表の曲の中で、右の難易度の譜面を左の難易度へ移す */
-  movedCharts: Record<string, string> | null;
+  /** 表の曲の行に書いた`chart_moves`。表の曲の中で、右の難易度の譜面を左の難易度へ移す */
+  chartMoves: Record<string, string> | null;
   note: string | null;
   /** 音とオーバーレイを共有するPB原盤の曲の管理名 */
   share: string | null;
-  /** 裏エントリーなら、差し替え元の曲と条件 */
-  variant: SongVariant | null;
 }
 
 /**
@@ -110,7 +107,7 @@ export async function buildGenerationRows(
       another,
     );
     rows.push(...listings.map((listing): ManifestSongDraft => {
-      const { fiveKeyOf, variant } = listing;
+      const { fiveKeyOf } = listing;
       return {
         sourceAssets: listing.excluded
           ? sourceAssets
@@ -127,15 +124,14 @@ export async function buildGenerationRows(
           ? {}
           : { excludedCharts: [...listing.excludedCharts] }),
         ...(fiveKeyOf === null ? {} : { fiveKeyOf }),
-        ...(listing.movedCharts === null
+        ...(listing.chartMoves === null
           ? {}
-          : { movedCharts: listing.movedCharts }),
+          : { chartMoves: listing.chartMoves }),
         sourceGeneration: generation,
         ...(listing.note === null ? {} : { note: listing.note }),
         ...(listing.share === null ? {} : { share: listing.share }),
         sourceSongIndex: song.song_id,
         title: song.title,
-        ...(variant === null ? {} : { variantOf: variant }),
       };
     }));
   }

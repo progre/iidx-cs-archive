@@ -16,9 +16,9 @@ import type { Disc } from "@csa/containers-disc";
 import type { CatalogRow } from "@csa/selection-song-catalog";
 import {
   draftManifestSong,
-  isPlayable,
   type LoadedSource,
   measureLap,
+  soundLengthOfBytes,
 } from "../ports/song/mod.ts";
 
 export interface LapOutputOptions {
@@ -56,7 +56,6 @@ export async function writeLapOutputs(
   const { elf, generation } = source;
   const drafted = draftedLapRows(
     rows,
-    isPlayable,
     (row) => draftManifestSong(row, source),
   );
   const { ordered } = drafted;
@@ -77,8 +76,9 @@ export async function writeLapOutputs(
       copy.files.size - copy.reused
     }`,
   );
-  // 曲リストの音のハッシュは、bundleのために読んだ音から求め、原盤を読み直さない
+  // 曲リストの音のハッシュと長さは、bundleのために読んだ音から求め、原盤を読み直さない
   const soundPrints = new Map<string, SoundPrint>();
+  const soundLengths = new Map<string, number>();
   console.time(`time ${generation} sound bundle`);
   const sound = await writeSoundBundle(
     opened,
@@ -87,10 +87,9 @@ export async function writeLapOutputs(
     directories.discsDirectory,
     directories.reuse,
     async ({ asset, kind }, raw) => {
-      soundPrints.set(
-        soundSourceOf(generation, asset.sourceFileIndex),
-        await soundPrint(kind, raw),
-      );
+      const source = soundSourceOf(generation, asset.sourceFileIndex);
+      soundPrints.set(source, await soundPrint(kind, raw));
+      soundLengths.set(source, await soundLengthOfBytes(raw));
     },
   );
   console.timeEnd(`time ${generation} sound bundle`);
@@ -100,7 +99,7 @@ export async function writeLapOutputs(
     elf,
     rows.map((row) => row.sourceSongIndex),
     drafted.all,
-    soundPrints,
+    { lengths: soundLengths, prints: soundPrints },
   );
   console.time(`time ${generation} title cards and overlays`);
   const display = await prepareDisplayOfLap(

@@ -1,9 +1,9 @@
 // 全曲リストの行から裏エントリーの組を集める。ファイルを読まず、組み立てた行で確かめる。
 
 import { assertEquals, assertThrows } from "@std/assert";
-import { catalogFiveKeysOf, catalogVariantsOf } from "./catalog_variants.ts";
+import { catalogVariantsOf } from "./catalog_variants.ts";
 import type { GenerationCatalog } from "./catalog_groups.ts";
-import type { CatalogFront, CatalogRow } from "../tsv.ts";
+import type { CatalogFront, CatalogRow } from "../csv.ts";
 
 const row = (name: string, line: number, front?: CatalogFront) =>
   ({ line, name, songId: null, ...(front ? { front } : {}) }) as CatalogRow;
@@ -47,8 +47,8 @@ Deno.test("同じ曲を2行に書いてどちらも表になれば、裏は表�
       {
         generation: "7th",
         rows: [
-          row("A", 2, { preferred: true }),
-          { ...row("A", 3, { preferred: true }), edition: "7th" },
+          row("A", 2, { slotOwner: true }),
+          { ...row("A", 3, { slotOwner: true }), edition: "7th" },
         ],
       },
       {
@@ -72,21 +72,49 @@ Deno.test("us の行は、ほかの作品の行より後に表の候補にする
   );
 });
 
-Deno.test("frontを書いた行を表にする", () => {
+Deno.test("save_slot_ownerを書いた行を枠の持ち主にし、既定では表にする", () => {
   assertEquals(
     variantsOf([
-      { generation: "3rd", rows: [row("A", 2, { preferred: true })] },
-      { generation: "pb", rows: [row("a", 2)] },
+      { generation: "3rd", rows: [row("A", 2, { slotOwner: true })] },
+      { generation: "4th", rows: [row("a", 2)] },
     ]),
-    ["pb/a->3rd/A#0"],
+    ["4th/a->3rd/A#0"],
   );
 });
 
-Deno.test("表の候補が同じ作品に2行あるとエラーになる", () => {
+Deno.test("組に PB の行があれば PB の行が枠の持ち主で、save_slot_ownerは書けない", () => {
+  assertThrows(
+    () =>
+      variantsOf([
+        { generation: "3rd", rows: [row("A", 2, { slotOwner: true })] },
+        { generation: "pb", rows: [row("a", 2)] },
+      ]),
+    Error,
+    "3rdの全曲リスト line 2: 組に PB の行があるので、枠の持ち主を書けない",
+  );
+});
+
+Deno.test("表を選ぶ関数で持ち主と別の行を表にすると、持ち主の裏に印を付ける", () => {
+  const variants = catalogVariantsOf(
+    [
+      { generation: "3rd", rows: [row("A", 2)] },
+      { generation: "4th", rows: [row("a", 2)] },
+    ],
+    keyOf,
+    isTwin,
+    (candidates) => candidates[0],
+  );
+  assertEquals(
+    variants.map((v) => [v.generation, v.frontGeneration, v.slotOwner]),
+    [["4th", "3rd", true]],
+  );
+});
+
+Deno.test("枠の持ち主の候補が同じ作品に2行あるとエラーになる", () => {
   assertThrows(
     () => variantsOf([{ generation: "pb", rows: [row("A", 2), row("a", 3)] }]),
     Error,
-    "pbの全曲リスト line 2, 3: 組の表の候補が同じ作品に2行ある",
+    "pbの全曲リスト line 2, 3: 組の枠の持ち主の候補が同じ作品に2行ある",
   );
 });
 
@@ -127,16 +155,16 @@ Deno.test("excludeを書いた行は、組に入れない", () => {
   );
 });
 
-Deno.test("front_chartsは、難易度名の表になる", () => {
+Deno.test("chart_movesは、難易度名の表になる", () => {
   const [variant] = catalogVariantsOf(
     [
-      { generation: "3rd", rows: [row("A", 2, { charts: { sl: "sa" } })] },
+      { generation: "3rd", rows: [row("A", 2, { chartMoves: { sl: "sa" } })] },
       { generation: "pb", rows: [row("A", 2)] },
     ],
     keyOf,
     isTwin,
   );
-  assertEquals(variant.frontCharts, { sp_black: "sp_another" });
+  assertEquals(variant.chartMoves, { sp_black: "sp_another" });
 });
 
 Deno.test("同じ表の曲に9曲目の裏があるとエラーになる", () => {
@@ -149,29 +177,6 @@ Deno.test("同じ表の曲に9曲目の裏があるとエラーになる", () =>
     Error,
     "pb/Aの裏は8曲までにする",
   );
-});
-
-Deno.test("five_keysの行は、裏にせず、組の表の5鍵盤版にする", () => {
-  const catalogs = [
-    { generation: "red", rows: [row("A", 2)] },
-    { generation: "us", rows: [row("a", 2, { fiveKeys: true })] },
-  ];
-  assertEquals(variantsOf(catalogs), []);
-  assertEquals(
-    catalogFiveKeysOf(catalogs, keyOf, isTwin).map((p) =>
-      `${p.generation}/${p.title}->${p.frontGeneration}/${p.frontTitle}`
-    ),
-    ["us/a->red/A"],
-  );
-});
-
-Deno.test("組が原作の5鍵盤版を持てば、five_keysの行はその5鍵盤版の裏にする", () => {
-  const catalogs = [
-    { generation: "gold", rows: [row("A", 2), { ...row("A", 3), songId: 97 }] },
-    { generation: "us", rows: [row("a", 2, { fiveKeys: true })] },
-  ];
-  assertEquals(variantsOf(catalogs), ["us/a->gold/A:97#0"]);
-  assertEquals(catalogFiveKeysOf(catalogs, keyOf, isTwin), []);
 });
 
 Deno.test("キーが空の行は、組にしない", () => {

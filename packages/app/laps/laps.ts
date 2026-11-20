@@ -10,8 +10,8 @@ import {
 } from "@csa/selection-manifest";
 import {
   elfDefinitionOf,
-  INDEX_GENERATIONS,
-  LAP_ORDER,
+  indexGenerationsOf,
+  lapOrderOf,
 } from "@csa/selection-definitions";
 import type { DisplayLap } from "../ports/display/mod.ts";
 import {
@@ -25,6 +25,7 @@ import type { CatalogRow } from "@csa/selection-song-catalog";
 import type { LzPlace } from "@csa/contents-chart";
 import { fileSourceElfPorts, SourceElfStore } from "@csa/contents-elf";
 import type { DiscInfo, PbSource } from "@csa/containers-disc";
+import { settleFronts } from "./fronts.ts";
 import { lapGeneration, type LapOptions } from "./generation_lap.ts";
 import { LapSongBytes } from "@csa/contents-song-db";
 
@@ -93,7 +94,7 @@ export async function runLaps(
   let variantRowsOf: Map<string, ManifestSongDraft[]>;
   let songs: LapSongs;
   try {
-    for (const generation of LAP_ORDER) {
+    for (const generation of lapOrderOf(options.generations)) {
       console.time(`time ${generation} lap`);
       const lap = await runStage(
         generation,
@@ -133,6 +134,12 @@ export async function runLaps(
     if (pb === undefined) {
       throw new Error("PBの周回が原盤を返していない");
     }
+    settleFronts(
+      rowsOf,
+      catalogRows,
+      pbSongs,
+      (generation) => elves.elfOf(generation),
+    );
     const finished = withOtherGenerationRows(
       rowsOf,
       catalogRows,
@@ -148,7 +155,7 @@ export async function runLaps(
         {
           catalogRowsOf,
           elfOf: (generation) => elves.elfOf(generation),
-          indexGenerations: INDEX_GENERATIONS,
+          indexGenerations: indexGenerationsOf(options.generations),
         },
         songmaps,
         lzPlaces,

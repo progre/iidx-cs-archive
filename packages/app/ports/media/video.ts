@@ -1,6 +1,7 @@
 // era1ムービーの変換と形式の表へ、`@csa/selection-video-era1`の決まりを渡す。
 
 import type { Disc } from "@csa/containers-disc";
+import { discOffsetOf, inDiscOrder } from "@csa/core";
 import {
   convertEra1Generation as convert,
   type Era1ConvertPlaces,
@@ -35,7 +36,11 @@ export function convertEra1Generation(
   places: Era1ConvertPlaces,
 ): Promise<void> {
   const read = videoReaderOf(disc);
-  return convert(jobs, {
+  const inOrder = inDiscOrder(
+    jobs,
+    ({ video }) => discOffsetOf(disc.files, video.archive, video.offset),
+  );
+  return convert(inOrder, {
     checkReport: checkConvertedReport,
     encodeArgs: ENCODE_ARGS,
     filterOf: (job) => cropFilter(job.crop),
@@ -54,7 +59,11 @@ export function loadFormats(
   { videos }: Era1Source,
   disc: Disc,
 ): Promise<Map<string, string>> {
-  return load(generation, videos, {
+  const inOrder = inDiscOrder(
+    videos,
+    (video) => discOffsetOf(disc.files, video.archive, video.offset),
+  );
+  return load(generation, inOrder, {
     formatKeyOf,
     formatOf,
     read: videoReaderOf(disc),

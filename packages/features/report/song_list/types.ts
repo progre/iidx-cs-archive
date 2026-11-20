@@ -48,7 +48,7 @@ export interface Chart {
 /**
  * ほかの難易度の譜面を演奏する欄に入る譜面。持つ譜面は次の2つである。
  * - 裏の曲の中で移した譜面
- * - 表の曲に無く、裏の曲から出す譜面(`front_charts`)
+ * - 表の曲に無く、裏の曲から出す譜面(`chart_moves`)
  */
 export interface MovedInChart extends Chart {
   from: ChartFrom;

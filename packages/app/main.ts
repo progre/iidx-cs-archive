@@ -1,7 +1,8 @@
 // 原盤を読んでCSAのISOを作る。
-// 引数: [--clean] [--full] [--images] [--slot] [--song-list-only] [--verify] [--write-plan]
-// 原盤は物理ドライブから読む。ドライブは実行中に選ぶ。
-// `--images`は、原盤をイメージファイルから読む開発者向けの引数である。
+// 引数: [--clean] [--full] [--images] [--skip=<世代>,...] [--slot] [--song-list-only] [--verify] [--write-plan]
+// 原盤は物理ドライブから読む。ドライブと読む原盤は実行中に選ぶ。PBの原盤は必ず読む。
+// `--images`は、原盤をイメージファイルから読む開発者向けの引数である。イメージを置いた世代だけを読む。
+// `--skip`は、書いた世代の原盤を読まない開発者向けの引数である。
 // `--slot`は、ISOを2つの枠へ交互に書く開発者向けの引数である。
 // `--song-list-only`を付けると、曲リストのHTMLとJSONだけを書き、ISOは作らない。
 // 中間ファイルは、周回の成果物を`build/intermediate/discs/<世代>/`、
@@ -30,36 +31,61 @@ import {
   elfFileNameOf,
   eraOf,
   GENERATIONS,
-  LAP_ORDER,
+  lapOrderOf,
   PB_GENERATION,
 } from "@csa/selection-definitions";
 import { assembleSongRows, DISCS_DIRECTORY } from "@csa/selection-manifest";
 import { DISC_TITLES, ISO_STAGE_TITLE } from "./disc_titles.ts";
+import { imageGenerations, skippedOf, withoutSkipped } from "./generations.ts";
 import { runLaps } from "./laps/mod.ts";
-import { makeManifest } from "./ports/song/mod.ts";
+import { makeManifest, useGenerations } from "./ports/song/mod.ts";
 import { buildIso } from "./run/mod.ts";
 import { type BuildProgress, plainProgress } from "./tui/plain_progress.ts";
 
+/** ドライブから読むとき、選ばせずに必ず読む素材世代。`--skip`では外せる */
+const ALWAYS_READ: readonly string[] = ["emp"];
 const ERA1_PARALLEL = 3;
 const ISO_STAGE = "ISO";
 const LOG_DIRECTORY = `${BUILD_DIRECTORY}/logs`;
 const LOG_FILE = `${LOG_DIRECTORY}/build.log`;
 const BELL = new TextEncoder().encode("\x07");
 
+interface Session {
+  /** 読む素材世代。PBは含めない */
+  generations: string[];
+  openDisc: DiscOpener;
+  progress: BuildProgress;
+}
+
 /**
- * 物理ディスクから読む。ドライブを選び、以降のログはファイルへ書いて工程の一覧を描く。
+ * 物理ディスクから読む。ドライブと読む原盤を選び、以降のログはファイルへ書いて工程の一覧を描く。
  * `verify`は、ISOの工程に照合の作業があるかを決める
  */
-async function driveSession(verify: boolean): Promise<
-  { openDisc: DiscOpener; progress: BuildProgress }
-> {
-  const { isoSteps, lapSteps, listrProgress, redirectConsoleTo, selectDrive } =
-    await import("./tui/mod.ts");
+async function driveSession(
+  verify: boolean,
+  skipped: readonly string[],
+): Promise<Session> {
+  const {
+    isoSteps,
+    lapSteps,
+    listrProgress,
+    redirectConsoleTo,
+    selectDrive,
+    selectGenerations,
+  } = await import("./tui/mod.ts");
   const drive = await selectDrive(await listOpticalDrives());
+  // 原盤を入れてもらう順に並べる
+  const selected = await selectGenerations(
+    lapOrderOf(GENERATIONS).filter((each) =>
+      each !== PB_GENERATION && !ALWAYS_READ.includes(each)
+    ),
+    (each) => DISC_TITLES[each],
+  );
+  const generations = withoutSkipped([...selected, ...ALWAYS_READ], skipped);
   Deno.mkdirSync(LOG_DIRECTORY, { recursive: true });
   console.log(`log: ${LOG_FILE}`);
   const progress = listrProgress(
-    [...LAP_ORDER, ISO_STAGE],
+    [...lapOrderOf(generations), ISO_STAGE],
     (name) => name === ISO_STAGE ? ISO_STAGE_TITLE : DISC_TITLES[name],
     (name) => {
       if (name === ISO_STAGE) {
@@ -80,14 +106,29 @@ async function driveSession(verify: boolean): Promise<
     prompt: progress.wait,
     reading: progress.resume,
   });
-  return { openDisc, progress };
+  return { generations, openDisc, progress };
 }
 
-/** 開発者向けに、イメージファイルから読む */
-const imageSession = () => ({
-  openDisc: imageFileOpener(readDiscFolders()),
-  progress: plainProgress,
-});
+const hasImageFolder = (folder: string): boolean => {
+  try {
+    return Deno.statSync(`resources/${folder}`).isDirectory;
+  } catch {
+    return false;
+  }
+};
+
+/** 開発者向けに、イメージファイルから読む。イメージを置いた世代だけを読む */
+function imageSession(skipped: readonly string[]): Session {
+  const folders = readDiscFolders();
+  return {
+    generations: withoutSkipped(
+      imageGenerations(folders, hasImageFolder),
+      skipped,
+    ),
+    openDisc: imageFileOpener(folders),
+    progress: plainProgress,
+  };
+}
 
 async function main(): Promise<void> {
   const args = parseArgs(Deno.args, {
@@ -100,6 +141,7 @@ async function main(): Promise<void> {
       "verify",
       "write-plan",
     ],
+    string: ["skip"],
     unknown: (arg) => {
       throw new Error(`unknown argument: ${arg}`);
     },
@@ -112,9 +154,12 @@ async function main(): Promise<void> {
 
   // 原盤は周回で1枚ずつ読む。era1のムービーの変換と音のbundle、曲名カードとオーバーレイの`.if`の書き出しも、周回の中で行う
   const { full } = args;
-  const { openDisc, progress } = args.images
-    ? imageSession()
-    : await driveSession(args.verify);
+  const skipped = skippedOf(args.skip);
+  const { generations, openDisc, progress } = args.images
+    ? imageSession(skipped)
+    : await driveSession(args.verify, skipped);
+  console.log(`discs: ${[...generations, PB_GENERATION].join(", ")}`);
+  useGenerations(generations);
   const laps = await runLaps({
     discsDirectory: DISCS_DIRECTORY,
     era1: {
@@ -122,6 +167,7 @@ async function main(): Promise<void> {
       reconvert: full,
       tmpDir: `${INTERMEDIATE_DIRECTORY}/video_era1_tmp`,
     },
+    generations,
     openDisc,
     reuse: !full,
   }, progress.stage);
@@ -130,7 +176,7 @@ async function main(): Promise<void> {
     using _pb = laps.pb;
     // 曲の行とmanifestはファイルに書かず、値のままISOを作る処理へ渡す
     console.time("time song rows and manifest");
-    const songs = assembleSongRows(laps.rowsOf, GENERATIONS);
+    const songs = assembleSongRows(laps.rowsOf, generations);
     const made = makeManifest(songs, laps.songs);
     console.timeEnd("time song rows and manifest");
     await buildIso({

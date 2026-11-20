@@ -7,8 +7,8 @@ const back = (
   index: number,
   generation: string,
   position: number,
-  frontCharts: Record<string, string> = {},
-): FillBack => ({ frontCharts, frontIndex: 7, generation, index, position });
+  chartMoves: Record<string, string> = {},
+): FillBack => ({ chartMoves, frontIndex: 7, generation, index, position });
 
 /** PB の譜面の枠の難易度名 */
 const SLOTS =
@@ -52,7 +52,7 @@ Deno.test("鳴らす裏に無い難易度は、番号が最も小さい候補の
 });
 
 Deno.test("鳴らす裏がほかの裏から出す難易度の候補にもなるなら、すべて先頭の候補から出す", () => {
-  // dp_normal は 3rd が front_charts で出す。5th も dp_normal を持つので、5th を鳴らす裏にできない
+  // dp_normal は 3rd が chart_moves で出す。5th も dp_normal を持つので、5th を鳴らす裏にできない
   const fills = chartFills(
     [
       back(1, "3rd", 0, { dp_normal: "dp_hyper" }),
@@ -65,7 +65,7 @@ Deno.test("鳴らす裏がほかの裏から出す難易度の候補にもなる
   assertEquals([...fills], [[1, { added: { sp_normal: "sp_normal" } }]]);
 });
 
-Deno.test("DP BEGINNERと、front_chartsでほかの難易度に出している譜面は使わない", () => {
+Deno.test("DP BEGINNERと、chart_movesでほかの難易度に出している譜面は使わない", () => {
   const fills = chartFills(
     [back(1, "3rd", 0, { sp_normal: "sp_another" })],
     charts({ 1: ["sp_another", "dp_beginner", "dp_normal"] }),
@@ -78,7 +78,7 @@ Deno.test("DP BEGINNERと、front_chartsでほかの難易度に出している�
   }]]);
 });
 
-Deno.test("表の曲が持つ難易度の front_charts は、鳴らす裏の選び方に関わらない", () => {
+Deno.test("表の曲が持つ難易度の chart_moves は、鳴らす裏の選び方に関わらない", () => {
   // sp_hyper は表の曲が持つので、3rd の組は裏の中で移すだけである
   const fills = chartFills(
     [back(1, "3rd", 0, { sp_hyper: "sp_normal" }), back(2, "5th", 1)],

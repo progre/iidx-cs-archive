@@ -35,17 +35,31 @@ export const keysoundRetriggerCutOf = (generation: string): boolean =>
 /** PBの世代ID。CSAはPBの原盤を元に作る */
 export const PB_GENERATION = "pb";
 
-/** 原盤を読む順。usはempの前に読み、PBは最後に読む */
-export const LAP_ORDER: readonly string[] = [
-  ...GENERATIONS.filter((generation) => !["emp", "us"].includes(generation)),
-  "us",
-  "emp",
-  PB_GENERATION,
-];
+/** 読む素材世代を、発売順に並べ直す。知らない世代と PB を渡したら止める */
+export function selectedGenerations(selected: readonly string[]): string[] {
+  const unknown = selected.filter((generation) =>
+    !GENERATIONS.includes(generation)
+  );
+  if (unknown.length > 0) {
+    throw new Error(`素材世代ではない: ${unknown.join(", ")}`);
+  }
+  return GENERATIONS.filter((generation) => selected.includes(generation));
+}
 
-/** 索引の並び。発売順で、PBが最後 */
-export const INDEX_GENERATIONS: readonly string[] = [
-  ...GENERATIONS,
+/** 原盤を読む順。選んだ世代を発売順に読み、usはempの前に読み、PBは最後に読む */
+export const lapOrderOf = (selected: readonly string[]): string[] => {
+  const generations = selectedGenerations(selected);
+  const late = ["us", "emp"].filter((each) => generations.includes(each));
+  return [
+    ...generations.filter((each) => !late.includes(each)),
+    ...late,
+    PB_GENERATION,
+  ];
+};
+
+/** 索引の並び。選んだ世代を発売順に並べ、PBを最後に置く */
+export const indexGenerationsOf = (selected: readonly string[]): string[] => [
+  ...selectedGenerations(selected),
   PB_GENERATION,
 ];
 

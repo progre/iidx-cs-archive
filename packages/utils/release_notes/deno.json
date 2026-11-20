@@ -1,0 +1,4 @@
+{
+  "name": "@csa/utils-release-notes",
+  "exports": "./main.ts"
+}

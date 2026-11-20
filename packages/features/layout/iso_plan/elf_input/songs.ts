@@ -26,7 +26,7 @@ export interface ElfSongParts {
   /** 曲DBへ書く前に欄を消す譜面の難易度名 */
   excludedCharts: readonly string[];
   fiveKeyFrontIndex: number | undefined;
-  movedCharts: Record<string, string> | undefined;
+  chartMoves: Record<string, string> | undefined;
   overlay: ManifestOverlay;
   overlayIndexOf: (item: ManifestOverlayPackage) => number;
   /** オーバーレイをANOTHERのときだけ使う */
@@ -85,7 +85,7 @@ export function elfSongPartsOf(
       entryRanges: source.entryRanges,
       excludedCharts: song.excludedCharts ?? [],
       fiveKeyFrontIndex: song.fiveKeyOf?.targetSongIndex,
-      movedCharts: song.movedCharts,
+      chartMoves: song.chartMoves,
       ...(song.fiveKeyOf?.ownLevels ? { fiveKeyOwnLevels: true } : {}),
       overlay: songOverlayOf(song),
       overlayIndexOf: overlayIndexLookup(song, indices),

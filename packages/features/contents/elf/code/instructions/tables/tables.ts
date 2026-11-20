@@ -1,10 +1,11 @@
 /**
- * `data/elf_patch/`のTSVの文字列を、書き換えを作る関数が受け取る表にする。
+ * `data/elf_patch/`のCSVの文字列を、書き換えを作る関数が受け取る表にする。
  * ファイルを開かない。ファイルは`tables_gateway.ts`が読む。
  * 1行目が列名である。`#`で始まる行は読み飛ばす。
  * addressは`0x`付きの16進で書く。負にもなる距離と即値は十進で書く。
  */
 
+import { parse } from "@std/csv";
 import {
   BASE_ORIGINS,
   DIRECT_KINDS,
@@ -18,12 +19,11 @@ const KINDS = ["access", "addiu", "addu"] as const;
 const SITE_KINDS = ["flags", "items", "modes", "song"] as const;
 
 function parseTable(text: string, columns: readonly string[]): string[][] {
-  const lines = text.split("\n")
-    .filter((line) => line.length > 0 && !line.startsWith("#"));
-  if (lines[0] !== columns.join("\t")) {
-    throw new Error("列名が一致しない: " + lines[0]);
+  const [header, ...rows] = parse(text, { comment: "#" });
+  if (header?.join(",") !== columns.join(",")) {
+    throw new Error("列名が一致しない: " + header?.join(","));
   }
-  return lines.slice(1).map((line) => line.split("\t"));
+  return rows;
 }
 
 function toNumber(cell: string): number {

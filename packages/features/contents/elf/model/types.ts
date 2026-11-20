@@ -31,7 +31,7 @@ export interface AbcReference {
 export interface SongEntry {
   abcReferences: AbcReference[];
   /** 表の曲の中で譜面を移す組。移し先 → 移し元の難易度名 */
-  movedCharts?: Record<string, string>;
+  chartMoves?: Record<string, string>;
   /** 曲DBエントリー1件ぶんのバイト列。 */
   entry: Uint8Array;
   /** `entry`のうち曲DBへ書く範囲。残りは複製元の値を残す。 */
@@ -82,8 +82,10 @@ export interface PbVersionField {
 export interface PbBackEntry {
   /** 表の曲が持たない難易度を鳴らす裏なら`true` */
   forcedBack?: true;
-  /** 表の曲が持たない難易度 → それを出すこの裏の難易度 */
-  frontCharts?: Record<string, string>;
+  /** この裏の曲の中で譜面を移す組。移し先 → 移し元の難易度名 */
+  chartMoves?: Record<string, string>;
+  /** `chartMoves`の移し先のうち、表の曲が持たない難易度。移した譜面を表の曲へも写す */
+  frontFills?: string[];
   position: number;
   songId: number;
   targetSongIndex: number;
@@ -97,6 +99,11 @@ export interface SongContent {
   pbVideos?: PbVideoField[];
   sharedVideoAbcIndex?: number;
   songs: SongEntry[];
+  /**
+   * 選曲リストの窓のうち、曲を置かない曲index。一部の原盤だけで作ると空く。
+   * この枠は、譜面の無いplaceholderのエントリーにして、選曲リストに出さない
+   */
+  vacantSlots?: number[];
 }
 
 /** DATA1へ追記する1本。`relativeSector`はDATA1先頭からの距離。 */

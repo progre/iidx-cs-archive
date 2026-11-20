@@ -1,4 +1,4 @@
-// `data/elf_patch/`のTSVを読む。TSVには、解析で分類した命令の一覧が入っている。
+// `data/elf_patch/`のCSVを読む。CSVには、解析で分類した命令の一覧が入っている。
 // 読んだ文字列は`tables.ts`が表にする。CSAのELFを作る関数は、その表を受け取る。
 
 import type { ElfPatchTables } from "../../../model/mod.ts";
@@ -11,7 +11,7 @@ import {
 
 const DIRECTORY = "data/elf_patch/";
 
-const read = (name: string) => Deno.readTextFileSync(DIRECTORY + name + ".tsv");
+const read = (name: string) => Deno.readTextFileSync(DIRECTORY + name + ".csv");
 
 export const readElfPatchTables = (): ElfPatchTables => ({
   saveDataReferences: parseSaveDataReferences(read("save_data_references")),

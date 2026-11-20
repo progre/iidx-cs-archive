@@ -50,18 +50,13 @@ Deno.test("収録する曲も、全曲リストのメモを持つ", async () => 
   assertEquals(rows.map((row) => row.note), [undefined, undefined, "メモ"]);
 });
 
-Deno.test("全曲リストの行が持つ組を、行の5鍵盤版と裏の条件にする", async () => {
-  const variant = { rule: "custom" as const, songId: 1 };
+Deno.test("行の5鍵盤版を書く。裏の条件は周回の後に書くので、周回の行は持たない", async () => {
   const rows = await rowsOf((songId) =>
-    songId === 2
-      ? { ...LISTED, variant }
-      : songId === 3
-      ? { ...LISTED, fiveKeyOf: { songId: 1 } }
-      : LISTED
+    songId === 3 ? { ...LISTED, fiveKeyOf: { songId: 1 } } : LISTED
   );
   assertEquals(rows.map((row) => row.variantOf), [
     undefined,
-    variant,
+    undefined,
     undefined,
   ]);
   assertEquals(rows.map((row) => row.fiveKeyOf), [

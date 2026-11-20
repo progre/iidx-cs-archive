@@ -1,4 +1,5 @@
-// 全曲リストで表の曲を書いた行の組を、世代の行の裏エントリーに結ぶ。
+// 全曲リストで書いた組を、すべての世代を読み終えた後に、世代の行の裏エントリーに結ぶ。
+// 表か裏かは周回の後に決めるので、周回の中の行は組の条件を持たない。
 
 import type {
   CatalogRow,
@@ -25,132 +26,123 @@ export function songIdOf(
   return found[0];
 }
 
-/**
- * 別の世代の全曲リストは、その世代の周回まで読まないので、表の曲のsong_idが分からない。
- * 周回の中の並びは、裏かどうかだけで決まる。
- * そこで周回の中では、表の曲のsong_idを仮の値にする。
- * 周回の後で、`withOtherGenerationFronts`が正しいsong_idに書き直す。
- * 全曲リストに同じ曲を2行書くと、その2行は裏の曲の番号が同じになる。
- * どの行を書き直すかを取り違えないように、仮の値は行番号から作る負の数にする
- */
-const pendingFrontOf = (variant: CatalogVariant) => -variant.line;
-
-const isOtherGeneration = (variant: CatalogVariant) =>
-  variant.frontGeneration !== variant.generation;
-
-/** 裏の曲の行の組。`songId`は裏の曲の曲番号 */
-export interface RowVariant {
-  songId: number;
-  variant: SongVariant;
-}
-
-/**
- * 組から、全曲リストの行番号 → 裏の曲と条件、を引く表を作る。
- * 同じ曲を2行に書いた写しがあるので、曲番号でなく行番号で引く。
- * 表の曲が別の世代なら、song_idは`pendingFrontOf`の仮の値にしておく
- */
-export function variantsOf(
-  generation: string,
-  rows: ReadonlyMap<number, CatalogRow>,
-  variants: readonly CatalogVariant[],
-): Map<number, RowVariant> {
-  return new Map(
-    variants.filter((variant) => variant.generation === generation).map(
-      (variant) => {
-        const other = isOtherGeneration(variant);
-        const where = whereOf(variant);
-        const back = songIdOf(rows, variant.title, where);
-        const front = other
-          ? pendingFrontOf(variant)
-          : songIdOf(rows, variant.frontTitle, where);
-        const { rule } = variant;
-        return [variant.line, {
-          songId: back,
-          variant: {
-            ...(rule?.kind === "previousSong"
-              ? { afterSongId: songIdOf(rows, rule.after, where) }
-              : {}),
-            ...(variant.frontCharts === undefined
-              ? {}
-              : { frontCharts: variant.frontCharts }),
-            ...(other ? { generation: variant.frontGeneration } : {}),
-            frontLine: variant.frontLine,
-            ...(variant.position === undefined
-              ? {}
-              : { position: variant.position }),
-            rule: rule?.kind ?? "custom",
-            songId: front,
-          },
-        }];
-      },
-    ),
-  );
-}
-
-/** 表の曲を書いた裏の曲が、世代の行に載らなかったら止める */
-export function assertVariantsBuilt(
-  variants: ReadonlyMap<number, RowVariant>,
-  rows: readonly ManifestSongDraft[],
-): void {
-  const missing = [...variants.values()]
-    .map(({ songId }) => songId)
-    .filter((songId) => !rows.some((row) => row.sourceSongIndex === songId));
-  if (missing.length > 0) {
-    throw new Error(
-      `表の曲を書いた裏の曲が収録されない: song_id ${missing.join(", ")}`,
-    );
-  }
-}
-
-/** 表の曲を全曲リストで外していれば、裏の曲は載らないので止める */
-function includedFrontOf(
-  variant: CatalogVariant,
+/** 表の曲の曲番号。表の曲を全曲リストで外していれば、裏の曲は載らないので止める */
+export function includedSongIdOf(
   rows: ReadonlyMap<number, CatalogRow> | undefined,
+  generation: string,
+  title: string,
+  where: string,
 ): number {
-  const { frontGeneration, frontTitle } = variant;
-  const where = whereOf(variant);
-  const songId = songIdOf(rows, frontTitle, where);
+  const songId = songIdOf(rows, title, where);
   if (rows?.get(songId)?.exclude) {
     throw new Error(
-      `${where}: ${frontGeneration}の全曲リストで${frontTitle}を外している`,
+      `${where}: ${generation}の全曲リストで${title}を外している`,
     );
   }
   return songId;
 }
 
+/** 世代の行のうち、全曲リストの`line`行目から作った行の位置。無ければ`where`の行を示して止める */
+export function rowAtLine(
+  rows: readonly ManifestSongDraft[],
+  line: number,
+  where: string,
+): number {
+  const at = rows.findIndex((row) => row.catalogLine === line);
+  if (at < 0) {
+    throw new Error(`${where}: 全曲リストの行の曲が、世代の行に無い`);
+  }
+  return at;
+}
+
+function songVariantOf(
+  variant: CatalogVariant,
+  catalogRows: ReadonlyMap<string, ReadonlyMap<number, CatalogRow>>,
+): SongVariant {
+  const where = whereOf(variant);
+  const { frontGeneration, generation, rule } = variant;
+  return {
+    ...(rule?.kind === "previousSong"
+      ? {
+        afterSongId: songIdOf(catalogRows.get(generation), rule.after, where),
+      }
+      : {}),
+    ...(variant.chartMoves === undefined
+      ? {}
+      : { chartMoves: variant.chartMoves }),
+    ...(frontGeneration === generation ? {} : { generation: frontGeneration }),
+    frontLine: variant.frontLine,
+    ...(variant.position === undefined ? {} : { position: variant.position }),
+    rule: rule?.kind ?? "custom",
+    songId: includedSongIdOf(
+      catalogRows.get(frontGeneration),
+      frontGeneration,
+      variant.frontTitle,
+      where,
+    ),
+  };
+}
+
 /**
- * 表の曲を裏と別の世代にした組を扱う。
- * 表の曲のsong_idは、表の曲がある世代を読み終えるまで分からない。
- * このため、すべての世代を読み終えた後に、表の曲のsong_idを裏の行の`variantOf`に書く
+ * 裏の曲の行に、差し替え元の曲と条件を書く。
+ * 裏の曲は、表の曲の中で譜面を移さないので、行の`chartMoves`を外す。組は裏の条件に入れる。
+ * 裏の曲が組のセーブの枠の持ち主なら、原作の5鍵盤版を表の曲に結び直す。
+ * PB 原盤の曲の写しの裏は下書きを持たないので、`withPbSlotFronts`が扱う
  */
-export function withOtherGenerationFronts(
+export function withCatalogVariants(
   rowsOf: ReadonlyMap<string, readonly ManifestSongDraft[]>,
   catalogRows: ReadonlyMap<string, ReadonlyMap<number, CatalogRow>>,
   variants: readonly CatalogVariant[],
 ): Map<string, ManifestSongDraft[]> {
   const result = new Map([...rowsOf].map(([gen, rows]) => [gen, [...rows]]));
-  // PB 原盤の曲の写しの裏は下書きを持たないので、`withPbSlotFronts`が扱う
-  const others = variants.filter((variant) =>
-    isOtherGeneration(variant) && variant.generation !== "pb"
-  );
-  for (const variant of others) {
-    const { generation } = variant;
+  for (const variant of variants.filter((each) => each.generation !== "pb")) {
     const where = whereOf(variant);
-    const back = songIdOf(catalogRows.get(generation), variant.title, where);
-    const front = includedFrontOf(
-      variant,
-      catalogRows.get(variant.frontGeneration),
-    );
-    const rows = result.get(generation) ?? [];
-    const at = rows.findIndex((row) =>
-      row.sourceSongIndex === back &&
-      row.variantOf?.songId === pendingFrontOf(variant)
-    );
-    if (at < 0) {
-      throw new Error(`${where}: 裏の曲が行に無い`);
+    const rows = result.get(variant.generation) ?? [];
+    const at = rowAtLine(rows, variant.line, where);
+    const { chartMoves: _, ...back } = rows[at];
+    rows[at] = { ...back, variantOf: songVariantOf(variant, catalogRows) };
+    result.set(variant.generation, rows);
+    if (variant.slotOwner) {
+      const fronts = result.get(variant.frontGeneration) ?? [];
+      withTwinMoved(
+        result,
+        back,
+        fronts[rowAtLine(fronts, variant.frontLine, where)],
+      );
     }
-    const variantOf = rows[at].variantOf as SongVariant;
-    rows[at] = { ...rows[at], variantOf: { ...variantOf, songId: front } };
   }
   return result;
+}
+
+/**
+ * 原作の5鍵盤版は、原盤の定義で同じ世代の表の曲と組になる。
+ * 表が枠の持ち主から別の曲に替わったら、5鍵盤版を新しい表の曲に結ぶ。
+ * 新しい表は持ち主の曲indexに置くので、5鍵盤版が指す曲indexは変わらない
+ */
+function withTwinMoved(
+  rowsOf: Map<string, ManifestSongDraft[]>,
+  owner: ManifestSongDraft,
+  front: ManifestSongDraft,
+): void {
+  const generation = owner.sourceGeneration;
+  const rows = rowsOf.get(generation) ?? [];
+  rows.forEach((row, at) => {
+    const fiveKey = row.fiveKeyOf;
+    if (
+      fiveKey === undefined || fiveKey.generation !== undefined ||
+      fiveKey.songId !== owner.sourceSongIndex
+    ) {
+      return;
+    }
+    rows[at] = {
+      ...row,
+      fiveKeyOf: {
+        ...fiveKey,
+        ...(front.sourceGeneration === generation
+          ? {}
+          : { generation: front.sourceGeneration }),
+        songId: front.sourceSongIndex,
+      },
+    };
+  });
 }

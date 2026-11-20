@@ -1,4 +1,4 @@
-export { SEC } from "./disc.ts";
+export { discOffsetOf, inDiscOrder, inKeyOrder, SEC } from "./disc.ts";
 export type { DiscImage, OpenDisc, PairlessSourceSong } from "./disc.ts";
 export type {
   SongmapChart,

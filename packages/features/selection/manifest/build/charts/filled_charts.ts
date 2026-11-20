@@ -4,12 +4,12 @@
 // 曲リストとゲームが食い違わないよう、出す裏は stub と同じ規則で決める。
 
 import type { ManifestPbBack, ManifestVariant } from "@csa/core";
-import type { HasChart } from "./moved_charts.ts";
+import type { HasChart } from "./front_fills.ts";
 
 /** 選んで出す裏1曲 */
 export interface FillBack {
-  /** 表の曲の難易度 → それを出すこの裏の難易度。全曲リストの`front_charts` */
-  frontCharts: Record<string, string>;
+  /** この裏の曲の中で譜面を移す組。移し先 → 移し元の難易度。全曲リストの`chart_moves` */
+  chartMoves: Record<string, string>;
   frontIndex: number;
   generation: string;
   /** 裏の曲index */
@@ -18,7 +18,7 @@ export interface FillBack {
 }
 
 export interface Fill {
-  /** `frontCharts`へ足す組 */
+  /** `chartMoves`へ足す組 */
   added: Record<string, string>;
   forcedBack?: true;
 }
@@ -44,12 +44,12 @@ export function chartFills(
     // ほかの難易度へ出している譜面は、移した後で消えるので持たない
     const has = (back: FillBack, name: string) =>
       hasChart(back.index, name) &&
-      !Object.values(back.frontCharts).includes(name);
+      !Object.values(back.chartMoves).includes(name);
     const candidate = (back: FillBack, name: string) =>
-      has(back, name) || back.frontCharts[name] !== undefined;
+      has(back, name) || back.chartMoves[name] !== undefined;
     // 表の曲が持つ難易度の組は、裏の中で移すだけなので、鳴らす裏の選び方に関わらない
     const written = group.flatMap((back) =>
-      Object.keys(back.frontCharts)
+      Object.keys(back.chartMoves)
         .filter((name) => !hasChart(front, name))
         .map((name) => ({ back, name }))
     );
@@ -87,19 +87,19 @@ export function chartFills(
   return fills;
 }
 
-/** 表の曲の中で移す組(`movedCharts`)を数え、移した後の譜面を持つとみなす */
+/** 表の曲の中で移す組(`chartMoves`)を数え、移した後の譜面を持つとみなす */
 export function withOwnMoves(
   songs: readonly {
-    movedCharts?: Record<string, string>;
+    chartMoves?: Record<string, string>;
     targetSongIndex: number;
   }[],
   hasChart: HasChart,
 ): HasChart {
   const moves = new Map(
     songs.flatMap((song) =>
-      song.movedCharts === undefined
+      song.chartMoves === undefined
         ? []
-        : [[song.targetSongIndex, song.movedCharts] as const]
+        : [[song.targetSongIndex, song.chartMoves] as const]
     ),
   );
   return (index, name) => {
@@ -112,7 +112,7 @@ export function withOwnMoves(
 }
 
 interface FillableSong {
-  movedCharts?: Record<string, string>;
+  chartMoves?: Record<string, string>;
   sourceGeneration: string;
   targetSongIndex: number;
   variantOf?: ManifestVariant;
@@ -120,7 +120,7 @@ interface FillableSong {
 
 /**
  * manifest の裏の曲と PB 原盤の曲の写しの裏に、`chartFills`の結果を書く。
- * 表の曲の中で移す組(`movedCharts`)は、移した後の譜面を持つとみなす。
+ * 表の曲の中で移す組(`chartMoves`)は、移した後の譜面を持つとみなす。
  * PB の写しの裏の譜面は、`pbHasChart`で PB の曲の song_id から引く
  */
 export function withChartFills<T extends FillableSong>(
@@ -144,7 +144,7 @@ export function withChartFills<T extends FillableSong>(
       ...songs.flatMap((song) => {
         const variant = song.variantOf;
         return variant?.rule !== "custom" ? [] : [{
-          frontCharts: variant.frontCharts ?? {},
+          chartMoves: variant.chartMoves ?? {},
           frontIndex: variant.targetSongIndex,
           generation: song.sourceGeneration,
           index: song.targetSongIndex,
@@ -152,7 +152,7 @@ export function withChartFills<T extends FillableSong>(
         }];
       }),
       ...pbBacks.map((back) => ({
-        frontCharts: back.frontCharts ?? {},
+        chartMoves: back.chartMoves ?? {},
         frontIndex: back.songId,
         generation: "pb",
         index: back.targetSongIndex,
@@ -163,14 +163,18 @@ export function withChartFills<T extends FillableSong>(
     orderOf,
     chartSlots,
   );
-  const filled = <V extends { frontCharts?: Record<string, string> }>(
+  // 足す組は、表の曲が持たない難易度へ移すので、表の曲へも写す
+  const filled = <
+    V extends { chartMoves?: Record<string, string>; frontFills?: string[] },
+  >(
     value: V,
     index: number,
   ): V => {
     const fill = fills.get(index);
     return fill === undefined ? value : {
       ...value,
-      frontCharts: { ...value.frontCharts, ...fill.added },
+      chartMoves: { ...value.chartMoves, ...fill.added },
+      frontFills: [...value.frontFills ?? [], ...Object.keys(fill.added)],
       ...(fill.forcedBack ? { forcedBack: true } : {}),
     };
   };

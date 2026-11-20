@@ -19,11 +19,11 @@ function assertJson(actual: unknown, expected: unknown): void {
   }
 }
 
-/** 索引の曲名からフォルダーまでの10列を空にして、難易度10列を並べた行 */
+/** 索引の曲名からchart_movesまでの11列を空にして、難易度10列を並べ、excludeとnoteを空にした行 */
 function rowOf(title: string, levels: Record<string, number>): string {
   const charts = "sb sn sh sa sl db dn dh da dl".split(" ");
   const cells = charts.map((chart) => String(levels[chart] ?? ""));
-  return [title, ...Array(10).fill(""), ...cells].join("\t");
+  return [title, ...Array(11).fill(""), ...cells, "", ""].join(",");
 }
 
 function catalogOf(...rows: string[]): string {
@@ -39,14 +39,14 @@ const CONTENT: DbContent = {
 };
 
 Deno.test("リストのファイル名から世代を取り出す", () => {
-  assertJson(generationOfCatalogFile("05_8th.tsv"), "8th");
+  assertJson(generationOfCatalogFile("05_8th.csv"), "8th");
   assertJson(generationOfCatalogFile("readme.md"), undefined);
 });
 
 Deno.test("定義に無い世代のファイルを報告する", () => {
-  const paths = new Map([["8th", "a/05_8th.tsv"], ["zzz", "a/99_zzz.tsv"]]);
+  const paths = new Map([["8th", "a/05_8th.csv"], ["zzz", "a/99_zzz.csv"]]);
   assertJson(strayFileLines(paths, ["8th"]), [
-    "a/99_zzz.tsv: unknown generation",
+    "a/99_zzz.csv: unknown generation",
   ]);
 });
 
@@ -75,7 +75,7 @@ Deno.test("原作と同じ難易度だけをリストから消す", () => {
 
 Deno.test("リストのパスは、世代で引く。リストでないファイルは含めない", () => {
   assertJson(
-    [...catalogPathsOf("d/", ["05_8th.tsv", "readme.md", "06_9th.tsv"])],
-    [["8th", "d/05_8th.tsv"], ["9th", "d/06_9th.tsv"]],
+    [...catalogPathsOf("d/", ["05_8th.csv", "readme.md", "06_9th.csv"])],
+    [["8th", "d/05_8th.csv"], ["9th", "d/06_9th.csv"]],
   );
 });

@@ -2,7 +2,15 @@
 
 import type { ManifestSongDraft } from "@csa/core";
 import { assertEquals } from "@std/assert";
-import { plannedSongs } from "./links.ts";
+import { plannedSongs as plan } from "./links.ts";
+
+type Selection = Parameters<typeof plan>[0];
+
+/** テストでは、PB の枠を使わない選んだ曲に、選んだ順で 99 から曲indexを振る */
+const plannedSongs = (selection: Selection, targetSongCount: number) => {
+  const added = selection.selected.filter((row) => row.pbSlot === undefined);
+  return plan(selection, targetSongCount, (row) => 99 + added.indexOf(row));
+};
 
 const song = (
   generation: string,

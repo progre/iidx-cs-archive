@@ -40,7 +40,7 @@ export function testWithPbElf(
 
 /** `data/elf_patch/`の表の文字列 */
 export const readElfPatchTable = (name: string): string =>
-  Deno.readTextFileSync(new URL(name + ".tsv", ELF_PATCH_TABLES));
+  Deno.readTextFileSync(new URL(name + ".csv", ELF_PATCH_TABLES));
 
 const word = (value: number) => (value >>> 0).toString(16).padStart(8, "0");
 const line = (patch: InstructionPatch) =>

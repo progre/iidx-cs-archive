@@ -34,7 +34,6 @@ import type {
   ManifestSongDraft,
   OpenDisc,
   SongmapDoc,
-  SoundPrint,
 } from "@csa/core";
 import {
   type LapMeasurePorts,
@@ -45,6 +44,8 @@ import {
   type SongListOptions,
   type SongListRun,
   type SongListWritePorts,
+  soundLengthOf,
+  type SoundMeasures,
   writeSongListFiles as write,
 } from "@csa/report-song-list";
 import {
@@ -132,7 +133,7 @@ const writePorts: SongListWritePorts<LapSources> = {
 
 /**
  * `songIds`は、世代の各行の曲番号である。`songs`は、下書きの欄を埋めた行である。
- * `knownSoundPrints`にある音は、原盤から読まない
+ * `knownSounds`にある音は、原盤から読まない
  */
 export const measureLap = (
   opened: OpenDisc,
@@ -140,7 +141,7 @@ export const measureLap = (
   elf: Uint8Array,
   songIds: Iterable<number>,
   songs: readonly ManifestSongDraft[],
-  knownSoundPrints: ReadonlyMap<string, SoundPrint>,
+  knownSounds: SoundMeasures,
 ) =>
   measure(
     lapPorts,
@@ -149,8 +150,12 @@ export const measureLap = (
     elf,
     songIds,
     songs,
-    knownSoundPrints,
+    knownSounds,
   );
+
+/** 読んだ音のバイト列から、曲リストに出す長さを数える */
+export const soundLengthOfBytes = (bytes: Uint8Array) =>
+  soundLengthOf(lapPorts, bytes);
 
 /** PBの周回で、PB原盤の曲と、そのオーバーレイの長さとハッシュを読む */
 export const readPbSongs = (
